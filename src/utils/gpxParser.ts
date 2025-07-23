@@ -105,3 +105,7 @@ export const sortGPXFilesByDate = (files: GPXFile[]): GPXFile[] => {
 export const getTotalTrackCount = (files: GPXFile[]): number => {
   return files.reduce((total, file) => total + file.tracks.length, 0);
 };
+
+export const getTotalPointCount = (files: GPXFile[]): number => {
+  return files.flatMap(file => file.tracks).flatMap(track => track.segments).flatMap(segment => segment.points).length
+}

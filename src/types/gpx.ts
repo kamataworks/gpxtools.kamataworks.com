@@ -55,5 +55,6 @@ export interface GPXMetadata {
 export interface GPXFileSummary {
   totalFiles: number;
   totalTracks: number;
+  totalPoints: number;
   files: GPXFile[];
 }

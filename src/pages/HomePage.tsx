@@ -9,7 +9,7 @@ import {
 import { FileDropZone } from '../components/FileDropZone';
 import { FileSummary } from '../components/FileSummary';
 import { EditModeButtons } from '../components/EditModeButtons';
-import { parseGPXFile, sortGPXFilesByDate, getTotalTrackCount } from '../utils/gpxParser';
+import { parseGPXFile, sortGPXFilesByDate, getTotalTrackCount, getTotalPointCount } from '../utils/gpxParser';
 import { saveGPXData } from '../utils/gpxStorage';
 import type { GPXFile, GPXFileSummary } from '../types/gpx';
 
@@ -64,6 +64,7 @@ export const HomePage: React.FC = () => {
   const summary: GPXFileSummary = {
     totalFiles: gpxFiles.length,
     totalTracks: getTotalTrackCount(gpxFiles),
+    totalPoints: getTotalPointCount(gpxFiles),
     files: gpxFiles,
   };
 

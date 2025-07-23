@@ -13,7 +13,7 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
-import { InsertDriveFile, Timeline, Close } from '@mui/icons-material';
+import { InsertDriveFile, Timeline, LocationOn, Close } from '@mui/icons-material';
 import type { GPXFileSummary } from '../types/gpx';
 
 interface FileSummaryProps {
@@ -43,13 +43,19 @@ export const FileSummary: React.FC<FileSummaryProps> = ({ summary, onFileDelete 
         <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
           <Chip
             icon={<InsertDriveFile />}
-            label={`${summary.totalFiles} ファイル`}
+            label={`${summary.totalFiles.toLocaleString()} ファイル`}
             color="info"
             variant="outlined"
           />
           <Chip
             icon={<Timeline />}
-            label={`${summary.totalTracks} トラック`}
+            label={`${summary.totalTracks.toLocaleString()} トラック`}
+            color="success"
+            variant="outlined"
+          />
+          <Chip
+            icon={<LocationOn />}
+            label={`${summary.totalPoints.toLocaleString()} ポイント`}
             color="success"
             variant="outlined"
           />
@@ -66,7 +72,7 @@ export const FileSummary: React.FC<FileSummaryProps> = ({ summary, onFileDelete 
                 secondary={
                   <Box>
                     <Typography variant="body2" color="text.secondary">
-                      {file.tracks.length} トラック
+                      {file.tracks.length.toLocaleString()} トラック / {file.tracks.flatMap(track => track.segments).flatMap(segment => segment.points).length.toLocaleString()} ポイント
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       {formatDate(file.createdAt)}
