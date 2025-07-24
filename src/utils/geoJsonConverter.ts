@@ -1,27 +1,9 @@
 import type { GPXFile } from '../types/gpx';
+import type { FeatureCollection, Feature, LineString } from 'geojson';
 
-export interface GeoJSONFeature {
-  type: 'Feature';
-  geometry: {
-    type: 'LineString';
-    coordinates: [number, number][];
-  };
-  properties: {
-    fileName: string;
-    trackName: string;
-    fileIndex: number;
-    trackIndex: number;
-    segmentIndex: number;
-  };
-}
 
-export interface GeoJSONFeatureCollection {
-  type: 'FeatureCollection';
-  features: GeoJSONFeature[];
-}
-
-export const convertGPXToGeoJSON = (gpxFiles: GPXFile[]): GeoJSONFeatureCollection => {
-  const features: GeoJSONFeature[] = [];
+export const convertGPXToGeoJSON = (gpxFiles: GPXFile[]): FeatureCollection => {
+  const features: Feature[] = [];
 
   gpxFiles.forEach((file, fileIndex) => {
     file.tracks.forEach((track, trackIndex) => {
@@ -57,7 +39,7 @@ export const convertGPXToGeoJSON = (gpxFiles: GPXFile[]): GeoJSONFeatureCollecti
   };
 };
 
-export const convertGeoJSONToGPX = (geoJson: GeoJSONFeatureCollection): string => {
+export const convertGeoJSONToGPX = (geoJson: FeatureCollection<LineString, { fileName: string }>): string => {
   const gpxHeader = `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="GPX Tools" xmlns="http://www.topografix.com/GPX/1/1">
   <metadata>
@@ -68,7 +50,7 @@ export const convertGeoJSONToGPX = (geoJson: GeoJSONFeatureCollection): string =
   const gpxFooter = '</gpx>';
 
   let tracks = '';
-  const tracksByFile = new Map<string, GeoJSONFeature[]>();
+  const tracksByFile = new Map<string, Feature[]>();
 
   // Group features by file name
   geoJson.features.forEach(feature => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Container,
   Typography,
@@ -12,168 +12,122 @@ import {
 } from '@mui/material';
 import { ArrowBack, Download } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import Map, { Source, Layer, useControl } from 'react-map-gl/maplibre';
+import type { LayerProps, ErrorEvent as MaplibreErrorEvent } from 'react-map-gl/maplibre';
+import { TerraDraw, TerraDrawFreehandMode } from "terra-draw";
+import { TerraDrawMapLibreGLAdapter } from "terra-draw-maplibre-gl-adapter"
 import { loadGPXData } from '../utils/gpxStorage';
 import { convertGPXToGeoJSON, convertGeoJSONToGPX } from '../utils/geoJsonConverter';
 import type { GPXFile } from '../types/gpx';
-import type { GeoJSONFeatureCollection } from '../utils/geoJsonConverter';
+import type { FeatureCollection } from 'geojson';
+
+// Map style configuration
+const MAP_STYLE = {
+  version: 8 as const,
+  sources: {
+    'gsi-pale': {
+      type: 'raster' as const,
+      tiles: ['https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png'],
+      tileSize: 256,
+      attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>'
+    }
+  },
+  layers: [{
+    id: 'gsi-pale',
+    type: 'raster' as const,
+    source: 'gsi-pale'
+  }]
+};
+
+// Layer style for GPX tracks
+const trackLayerStyle: LayerProps = {
+  id: 'gpx-tracks',
+  type: 'line',
+  paint: {
+    'line-color': '#2563eb',
+    'line-width': 3,
+    'line-opacity': 0.8
+  }
+};
 
 export const EditPage: React.FC = () => {
   const navigate = useNavigate();
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<any>(null);
-  const drawRef = useRef<any>(null);
 
   const [gpxFiles, setGpxFiles] = useState<GPXFile[]>([]);
-  const [geoJsonData, setGeoJsonData] = useState<GeoJSONFeatureCollection | null>(null);
-  const [isMapLoading, setIsMapLoading] = useState(true);
-  const [mapError, setMapError] = useState<string | null>(null);
+  const [geoJsonData, setGeoJsonData] = useState<FeatureCollection | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [viewState, setViewState] = useState({
+    longitude: 139.7671,
+    latitude: 35.6812,
+    zoom: 10
+  });
 
   const handleBackToHome = () => {
     navigate('/');
   };
 
-  // localStorage からGPXデータを読み込み
+  // Load GPX data from localStorage
   useEffect(() => {
+    try {
+      const storedFiles = loadGPXData();
+      if (storedFiles && storedFiles.length > 0) {
+        setGpxFiles(storedFiles);
+        const geoJson = convertGPXToGeoJSON(storedFiles);
+        setGeoJsonData(geoJson);
 
-    const storedFiles = loadGPXData();
-    if (storedFiles && storedFiles.length > 0) {
-      setGpxFiles(storedFiles);
-      const geoJson = convertGPXToGeoJSON(storedFiles);
-      setGeoJsonData(geoJson);
-    } else {
-      setMapError('編集するGPXファイルがありません。ホーム画面でファイルを読み込んでください。');
-      setIsMapLoading(false);
+        // Calculate bounds for initial view
+        if (geoJson.features.length > 0) {
+          let minLng = Infinity, maxLng = -Infinity;
+          let minLat = Infinity, maxLat = -Infinity;
+
+          geoJson.features.forEach(feature => {
+            feature.geometry.coordinates.forEach(([lng, lat]) => {
+              minLng = Math.min(minLng, lng);
+              maxLng = Math.max(maxLng, lng);
+              minLat = Math.min(minLat, lat);
+              maxLat = Math.max(maxLat, lat);
+            });
+          });
+
+          if (isFinite(minLng) && isFinite(maxLng) && isFinite(minLat) && isFinite(maxLat)) {
+            const centerLng = (minLng + maxLng) / 2;
+            const centerLat = (minLat + maxLat) / 2;
+
+            // Calculate appropriate zoom level
+            const lngDiff = maxLng - minLng;
+            const latDiff = maxLat - minLat;
+            const maxDiff = Math.max(lngDiff, latDiff);
+
+            let zoom = 10;
+            if (maxDiff < 0.01) zoom = 15;
+            else if (maxDiff < 0.1) zoom = 12;
+            else if (maxDiff < 1) zoom = 9;
+            else zoom = 7;
+
+            setViewState({
+              longitude: centerLng,
+              latitude: centerLat,
+              zoom
+            });
+          }
+        }
+      } else {
+        setError('編集するGPXファイルがありません。ホーム画面でファイルを読み込んでください。');
+      }
+    } catch (err) {
+      console.error('Failed to load GPX data:', err);
+      setError('GPXデータの読み込みに失敗しました。');
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
-  // Maplibre + Terra Draw の動的読み込みと初期化
-  useLayoutEffect(() => {
-    if (!geoJsonData) return;
+  const handleDataChange = useCallback((updatedData: FeatureCollection) => {
+    setGeoJsonData(updatedData);
+  }, []);
 
-    const loadMaplibre = async (retryCount = 0) => {
-      // mapContainer.currentの準備を待つ（最大10回まで）
-      if (!mapContainer.current) {
-        if (retryCount < 10) {
-          console.log(`mapContainer not ready, retrying... (${retryCount + 1}/10)`);
-          setTimeout(() => loadMaplibre(retryCount + 1), 100);
-        } else {
-          console.error('mapContainer initialization failed after 10 retries');
-          setMapError('マップコンテナの初期化に失敗しました');
-          setIsMapLoading(false);
-        }
-        return;
-      }
-      try {
-        // 動的にMaplibre GL JSとTerra Drawを読み込み
-        const [maplibregl, { MaplibreTerradrawControl }] = await Promise.all([
-          import('maplibre-gl'),
-          import('@watergis/maplibre-gl-terradraw')
-        ]);
-
-        // CSSも動的に読み込み
-        await Promise.all([
-          import('maplibre-gl/dist/maplibre-gl.css'),
-          import('@watergis/maplibre-gl-terradraw/dist/maplibre-gl-terradraw.css')
-        ]);
-
-        // 地理院地図paleのスタイル設定
-        const mapStyle = {
-          version: 8 as const,
-          sources: {
-            'gsi-pale': {
-              type: 'raster' as const,
-              tiles: ['https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png'],
-              tileSize: 256,
-              attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>'
-            }
-          },
-          layers: [{
-            id: 'gsi-pale',
-            type: 'raster' as const,
-            source: 'gsi-pale'
-          }]
-        };
-
-        // マップ初期化
-        const map = new maplibregl.Map({
-          container: mapContainer.current!,
-          style: mapStyle,
-          center: [139.7671, 35.6812], // 東京駅を初期中心点
-          zoom: 10
-        });
-
-        mapRef.current = map;
-
-        map.on('load', () => {
-          // Terra Draw control を追加
-          const draw = new MaplibreTerradrawControl({
-            modes: ['render', 'linestring', 'select', 'delete-selection', 'delete'],
-            open: true,
-          });
-
-          map.addControl(draw, 'top-left');
-          drawRef.current = draw;
-
-          // 初期GeoJSONデータを追加
-          if (geoJsonData.features.length > 0) {
-            const terraDrawInstance = draw.getTerraDrawInstance();
-            terraDrawInstance.addFeatures(geoJsonData.features);
-
-            // マップを全てのフィーチャーが見えるように調整
-            const bounds = new maplibregl.LngLatBounds();
-            geoJsonData.features.forEach(feature => {
-              feature.geometry.coordinates.forEach(coord => {
-                bounds.extend(coord as [number, number]);
-              });
-            });
-
-            if (!bounds.isEmpty()) {
-              map.fitBounds(bounds, { padding: 50 });
-            }
-          }
-
-          // 編集イベントのリスナーを設定
-          const terraDrawInstance = draw.getTerraDrawInstance();
-
-          terraDrawInstance.on('change', () => {
-            // 編集が発生した時の処理
-            const features = terraDrawInstance.getSnapshot();
-            const updatedGeoJson: GeoJSONFeatureCollection = {
-              type: 'FeatureCollection',
-              features: features as any
-            };
-            setGeoJsonData(updatedGeoJson);
-          });
-
-          setIsMapLoading(false);
-        });
-
-        map.on('error', (e) => {
-          console.error('Map error:', e);
-          setMapError('マップの初期化中にエラーが発生しました');
-          setIsMapLoading(false);
-        });
-
-      } catch (error) {
-        console.error('Failed to load maplibre:', error);
-        setMapError('マップライブラリの読み込みに失敗しました');
-        setIsMapLoading(false);
-      }
-    };
-
-    loadMaplibre();
-
-    // クリーンアップ
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-        drawRef.current = null;
-      }
-    };
-  }, [geoJsonData]);
-
-  const handleDownload = () => {
+  const handleDownload = useCallback(() => {
     if (!geoJsonData) return;
 
     try {
@@ -187,13 +141,18 @@ export const EditPage: React.FC = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Download error:', error);
-      setMapError('ファイルのダウンロードに失敗しました');
+    } catch (err) {
+      console.error('Download error:', err);
+      setError('ファイルのダウンロードに失敗しました');
     }
-  };
+  }, [geoJsonData]);
 
-  if (isMapLoading) {
+  const handleMapError = useCallback((event: MaplibreErrorEvent) => {
+    console.error('Map error:', event);
+    setError('マップの読み込み中にエラーが発生しました');
+  }, []);
+
+  if (isLoading) {
     return (
       <Container maxWidth="md" sx={{ py: 4, textAlign: 'center' }}>
         <CircularProgress size={60} sx={{ mb: 2 }} />
@@ -205,7 +164,7 @@ export const EditPage: React.FC = () => {
     );
   }
 
-  if (mapError) {
+  if (error) {
     return (
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Box sx={{ mb: 4 }}>
@@ -219,7 +178,7 @@ export const EditPage: React.FC = () => {
         </Box>
 
         <Alert severity="error" sx={{ mb: 4 }}>
-          <Typography variant="body1">{mapError}</Typography>
+          <Typography variant="body1">{error}</Typography>
         </Alert>
 
         <Card>
@@ -262,15 +221,25 @@ export const EditPage: React.FC = () => {
         </Typography>
       </Box>
 
-      <Card sx={{ height: '70vh', position: 'relative' }}>
-        <div
-          ref={mapContainer}
-          style={{
-            width: '100%',
-            height: '100%',
-            borderRadius: '4px'
-          }}
-        />
+      <Card sx={{ height: '70vh', position: 'relative', overflow: 'hidden' }}>
+        <Map
+          {...viewState}
+          onMove={evt => setViewState(evt.viewState)}
+          style={{ width: '100%', height: '100%' }}
+          mapStyle={MAP_STYLE}
+          onError={handleMapError}
+        >
+          {geoJsonData && geoJsonData.features.length > 0 && (
+            <Source id="gpx-data" type="geojson" data={geoJsonData}>
+              <Layer {...trackLayerStyle} />
+            </Source>
+          )}
+
+          {/* <TerraDrawControl
+            geoJsonData={geoJsonData}
+            onDataChange={handleDataChange}
+          /> */}
+        </Map>
 
         {geoJsonData && geoJsonData.features.length > 0 && (
           <Fab
