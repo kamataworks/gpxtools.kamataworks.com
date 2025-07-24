@@ -9,7 +9,6 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  ListItemSecondaryAction,
   IconButton,
   Tooltip,
 } from '@mui/material';
@@ -63,24 +62,10 @@ export const FileSummary: React.FC<FileSummaryProps> = ({ summary, onFileDelete 
 
         <List dense>
           {summary.files.map((file, index) => (
-            <ListItem key={index} divider={index < summary.files.length - 1}>
-              <ListItemIcon>
-                <InsertDriveFile color="primary" />
-              </ListItemIcon>
-              <ListItemText
-                primary={file.name}
-                secondary={
-                  <Box>
-                    <Typography variant="body2" color="text.secondary">
-                      {file.tracks.length.toLocaleString()} トラック / {file.tracks.flatMap(track => track.segments).flatMap(segment => segment.points).length.toLocaleString()} ポイント
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {formatDate(file.createdAt)}
-                    </Typography>
-                  </Box>
-                }
-              />
-              <ListItemSecondaryAction>
+            <ListItem
+              key={index}
+              divider={index < summary.files.length - 1}
+              secondaryAction={
                 <Tooltip title="ファイルを削除">
                   <IconButton
                     edge="end"
@@ -96,7 +81,25 @@ export const FileSummary: React.FC<FileSummaryProps> = ({ summary, onFileDelete 
                     <Close />
                   </IconButton>
                 </Tooltip>
-              </ListItemSecondaryAction>
+              }
+            >
+              <ListItemIcon>
+                <InsertDriveFile color="primary" />
+              </ListItemIcon>
+              <ListItemText
+                primary={file.name}
+                secondary={
+                  <>
+                    <Typography variant="body2" color="text.secondary" component="span">
+                      {file.tracks.length.toLocaleString()} トラック / {file.tracks.flatMap(track => track.segments).flatMap(segment => segment.points).length.toLocaleString()} ポイント
+                    </Typography>
+                    <br />
+                    <Typography variant="caption" color="text.secondary" component="span">
+                      {formatDate(file.createdAt)}
+                    </Typography>
+                  </>
+                }
+              />
             </ListItem>
           ))}
         </List>
