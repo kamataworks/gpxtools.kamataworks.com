@@ -1,51 +1,66 @@
-interface Point3D {
-  x: number;
-  y: number;
-  z: number;
-}
-
 interface ContourLine {
   points: { x: number; y: number }[];
   level: number;
 }
 
-// ランダムな3D点群を生成
-function generateRandomPoints(count: number, width: number, height: number): Point3D[] {
-  const points: Point3D[] = [];
-
-  for (let i = 0; i < count; i++) {
-    points.push({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      z: Math.random() * 100, // 0-100の高度値
-    });
-  }
-
-  return points;
+// シンプルなノイズ関数（パーリンノイズの簡易版）
+function simpleNoise(x: number, y: number, seed: number = 12345): number {
+  const n = Math.sin(x * 12.9898 + y * 78.233 + seed) * 43758.5453;
+  return n - Math.floor(n);
 }
 
-// 距離による重み付き補間で高度を計算（改良版：ガウシアン重み付け）
-function interpolateHeight(x: number, y: number, points: Point3D[]): number {
-  let totalWeight = 0;
-  let weightedSum = 0;
-  const sigma = 200; // ガウシアンの標準偏差（影響範囲を調整）
+// 複数オクターブのノイズを重ね合わせ
+function fractalNoise(x: number, y: number, octaves: number = 4): number {
+  let value = 0;
+  let amplitude = 1;
+  let frequency = 0.01;
+  let maxValue = 0;
 
-  for (const point of points) {
-    const distance = Math.sqrt((x - point.x) ** 2 + (y - point.y) ** 2);
-    if (distance < 0.1) return point.z; // 点に非常に近い場合はその値を返す
-
-    // ガウシアン重み付け（より滑らかな補間）
-    const weight = Math.exp(-(distance ** 2) / (2 * sigma ** 2));
-    totalWeight += weight;
-    weightedSum += point.z * weight;
+  for (let i = 0; i < octaves; i++) {
+    value += simpleNoise(x * frequency, y * frequency, i * 1000) * amplitude;
+    maxValue += amplitude;
+    amplitude *= 0.5;
+    frequency *= 2;
   }
 
-  return totalWeight > 0 ? weightedSum / totalWeight : 50; // デフォルト値
+  return value / maxValue;
+}
+
+// 自然な地形を生成する高度計算関数
+function calculateNaturalHeight(x: number, y: number, width: number, height: number): number {
+  // 正規化座標（0-1）
+  const nx = x / width;
+  const ny = y / height;
+
+  // 基本地形（大きなスケール）
+  const baseHeight = fractalNoise(x, y, 3) * 60;
+
+  // 中規模の起伏
+  const mediumDetail = fractalNoise(x * 2, y * 2, 2) * 25;
+
+  // 細かいディテール
+  const fineDetail = fractalNoise(x * 4, y * 4, 2) * 10;
+
+  // 中央に向かって高くなる傾向（山岳地形風）
+  const centerX = 0.5;
+  const centerY = 0.5;
+  const distanceFromCenter = Math.sqrt((nx - centerX) ** 2 + (ny - centerY) ** 2);
+  const centralElevation = Math.max(0, (0.7 - distanceFromCenter) * 40);
+
+  // 全体を合成
+  const totalHeight = baseHeight + mediumDetail + fineDetail + centralElevation;
+
+  // 0-100の範囲にクランプ
+  return Math.max(5, Math.min(95, totalHeight));
+}
+
+// 直接高度計算（補間不要）
+function interpolateHeight(x: number, y: number): number {
+  return calculateNaturalHeight(x, y, 1920, 1080);
 }
 
 // マーチングスクエア法で等高線を生成
 function generateContourLines(
-  points: Point3D[],
   width: number,
   height: number,
   levels: number[],
@@ -64,10 +79,10 @@ function generateContourLines(
         const y2 = (j + 1) * stepY;
 
         // 四角形の4つの角の高度を計算
-        const h1 = interpolateHeight(x1, y1, points);
-        const h2 = interpolateHeight(x2, y1, points);
-        const h3 = interpolateHeight(x2, y2, points);
-        const h4 = interpolateHeight(x1, y2, points);
+        const h1 = interpolateHeight(x1, y1);
+        const h2 = interpolateHeight(x2, y1);
+        const h3 = interpolateHeight(x2, y2);
+        const h4 = interpolateHeight(x1, y2);
 
         // マーチングスクエアのケースを判定
         let caseIndex = 0;
@@ -291,16 +306,12 @@ function generateSmoothPath(points: { x: number; y: number }[]): string {
 // メイン関数：等高線背景のSVG data URLを生成
 export function generateContourBackground(): string {
   try {
-    const width = 1920;
-    const height = 1080;
-    const pointCount = 40; // 点の数を倍増
-    const levels = Array(100).fill(0).map((_, i) => i + 1); //[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100]; // より密な等高線
-
-    // ランダム点群を生成
-    const points = generateRandomPoints(pointCount, width, height);
+    const width = 2300;
+    const height = 1480;
+    const levels = [10, 20, 30, 40, 50, 60, 70, 80, 90]; // 適切な間隔の等高線
 
     // 等高線を生成（解像度を上げる）
-    const rawContourLines = generateContourLines(points, width, height, levels, 60);
+    const rawContourLines = generateContourLines(width, height, levels, 80);
 
     // 線分を連結して滑らかな等高線を作成
     const connectedLines = connectContourLines(rawContourLines);
@@ -320,9 +331,9 @@ export function generateContourBackground(): string {
           <style>
             .contour-line {
               fill: none;
-              stroke: darkblue;
+              stroke: #6b7280;
               stroke-width: 1;
-              stroke-opacity: 0.1;
+              stroke-opacity: 0.2;
               stroke-linecap: round;
               stroke-linejoin: round;
             }
