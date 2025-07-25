@@ -8,13 +8,16 @@ interface BackgroundWrapperProps {
 
 export const BackgroundWrapper: React.FC<BackgroundWrapperProps> = ({ children }) => {
   const [backgroundUrl, setBackgroundUrl] = useState<string>('');
+  const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
   useEffect(() => {
     // 初回ロード時に等高線背景を生成
-    const generateBackground = () => {
+    const generateBackground = async () => {
       try {
         const url = generateContourBackground();
         setBackgroundUrl(url);
+        // 少し遅延を入れてからフェードイン開始
+        setTimeout(() => setIsLoaded(true), 50);
       } catch (error) {
         console.warn('Failed to generate contour background:', error);
         setBackgroundUrl(''); // フォールバック：空文字列（白背景）
@@ -29,13 +32,28 @@ export const BackgroundWrapper: React.FC<BackgroundWrapperProps> = ({ children }
       sx={{
         minHeight: '100vh',
         width: '100%',
-        backgroundImage: backgroundUrl ? `url("${backgroundUrl}")` : 'none',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        backgroundAttachment: 'fixed',
+        position: 'relative',
       }}
     >
+      {/* 背景レイヤー */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundImage: backgroundUrl ? `url("${backgroundUrl}")` : 'none',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          backgroundAttachment: 'fixed',
+          opacity: isLoaded ? 1 : 0,
+          transition: 'opacity 1s ease-in-out',
+          zIndex: -1,
+        }}
+      />
+      {/* コンテンツレイヤー */}
       {children}
     </Box>
   );

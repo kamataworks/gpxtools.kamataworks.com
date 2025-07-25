@@ -320,9 +320,9 @@ export function generateContourBackground(): string {
           <style>
             .contour-line {
               fill: none;
-              stroke: darkblue;
+              stroke: #4f46e5;
               stroke-width: 1;
-              stroke-opacity: 0.1;
+              stroke-opacity: 0.3;
               stroke-linecap: round;
               stroke-linejoin: round;
             }
