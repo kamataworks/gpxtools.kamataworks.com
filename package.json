@@ -14,15 +14,14 @@
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.2.0",
     "@mui/material": "^7.2.0",
+    "@watergis/maplibre-gl-terradraw": "^1.4.0",
     "gpx-parser-builder": "^1.1.1",
     "maplibre-gl": "^5.6.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-dropzone": "^14.3.8",
     "react-map-gl": "^8.0.4",
-    "react-router-dom": "^7.7.0",
-    "terra-draw": "^1.10.0",
-    "terra-draw-maplibre-gl-adapter": "^1.1.1"
+    "react-router-dom": "^7.7.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",

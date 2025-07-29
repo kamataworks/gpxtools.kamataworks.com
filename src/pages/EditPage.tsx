@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Container,
   Typography,
@@ -12,30 +12,37 @@ import {
 } from '@mui/material';
 import { ArrowBack, Download } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import Map, { Source, Layer, useControl } from 'react-map-gl/maplibre';
 import type { LayerProps, ErrorEvent as MaplibreErrorEvent } from 'react-map-gl/maplibre';
-import { TerraDraw, TerraDrawFreehandMode } from "terra-draw";
-import { TerraDrawMapLibreGLAdapter } from "terra-draw-maplibre-gl-adapter"
 import { loadGPXData } from '../utils/gpxStorage';
 import { convertGPXToGeoJSON, convertGeoJSONToGPX } from '../utils/geoJsonConverter';
 import type { GPXFile } from '../types/gpx';
 import type { FeatureCollection } from 'geojson';
 
+import { Map, AttributionControl } from 'react-map-gl/maplibre';
+import type { StyleSpecification } from 'react-map-gl/maplibre'
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { MaplibreTerradrawControl } from '@watergis/maplibre-gl-terradraw'
+
+import '@watergis/maplibre-gl-terradraw/dist/maplibre-gl-terradraw.css'
+import type { MapLibreEvent } from 'maplibre-gl';
+
+
+
 // Map style configuration
-const MAP_STYLE = {
-  version: 8 as const,
+const MAP_STYLE: StyleSpecification = {
+  version: 8,
   sources: {
     'gsi-pale': {
-      type: 'raster' as const,
+      type: 'raster',
       tiles: ['https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png'],
       tileSize: 256,
-      attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>'
+      attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>',
     }
   },
   layers: [{
     id: 'gsi-pale',
-    type: 'raster' as const,
-    source: 'gsi-pale'
+    type: 'raster',
+    source: 'gsi-pale',
   }]
 };
 
@@ -66,6 +73,24 @@ export const EditPage: React.FC = () => {
   const handleBackToHome = () => {
     navigate('/');
   };
+
+  const [draw, setDraw] = useState<MaplibreTerradrawControl | null>(null)
+
+  const handleTerradrawOnLoad = useCallback((e: MapLibreEvent) => {
+    const maplibreTerradrawControl = new MaplibreTerradrawControl({
+      modes: ['render', 'linestring', 'select', 'delete-selection'],
+      open: true,
+    })
+    setDraw(maplibreTerradrawControl)
+    e.target.addControl(maplibreTerradrawControl, 'top-left')
+  }, [])
+
+  const handleTerradrawOnRemove = useCallback((e: MapLibreEvent) => {
+    if(draw) {
+      e.target.removeControl(draw)
+      setDraw(null)
+    }
+  }, [draw])
 
   // Load GPX data from localStorage
   useEffect(() => {
@@ -123,9 +148,13 @@ export const EditPage: React.FC = () => {
     }
   }, []);
 
-  const handleDataChange = useCallback((updatedData: FeatureCollection) => {
-    setGeoJsonData(updatedData);
-  }, []);
+  // draw と GeoJSON の結びつけ
+  useEffect(() => {
+    if(draw && geoJsonData) {
+      // TODO: どうもレンダーされない
+      draw.getTerraDrawInstance().addFeatures(geoJsonData.features.map(f => ({...f, properties: { ...f.properties, mode: 'linestring' }})))
+    }
+  }, [draw, geoJsonData])
 
   const handleDownload = useCallback(() => {
     if (!geoJsonData) return;
@@ -228,17 +257,17 @@ export const EditPage: React.FC = () => {
           style={{ width: '100%', height: '100%' }}
           mapStyle={MAP_STYLE}
           onError={handleMapError}
+          onLoad={handleTerradrawOnLoad}
+          onRemove={handleTerradrawOnRemove}
         >
-          {geoJsonData && geoJsonData.features.length > 0 && (
+          {/* {geoJsonData && geoJsonData.features.length > 0 && (
             <Source id="gpx-data" type="geojson" data={geoJsonData}>
               <Layer {...trackLayerStyle} />
             </Source>
-          )}
+          )} */}
 
-          {/* <TerraDrawControl
-            geoJsonData={geoJsonData}
-            onDataChange={handleDataChange}
-          /> */}
+          <AttributionControl />
+
         </Map>
 
         {geoJsonData && geoJsonData.features.length > 0 && (
