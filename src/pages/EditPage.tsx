@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Container,
   Typography,
@@ -7,16 +7,15 @@ import {
   CardContent,
   Button,
   Alert,
-  CircularProgress,
   Fab,
 } from '@mui/material';
 import { ArrowBack, Download } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import type { LayerProps, ErrorEvent as MaplibreErrorEvent } from 'react-map-gl/maplibre';
+import type { ErrorEvent as MaplibreErrorEvent } from 'react-map-gl/maplibre';
 import { loadGPXData } from '../utils/gpxStorage';
 import { convertGPXToGeoJSON, convertGeoJSONToGPX } from '../utils/geoJsonConverter';
 import type { GPXFile } from '../types/gpx';
-import type { FeatureCollection } from 'geojson';
+import type { FeatureCollection, LineString } from 'geojson';
 
 import { Map, AttributionControl } from 'react-map-gl/maplibre';
 import type { StyleSpecification } from 'react-map-gl/maplibre'
@@ -25,8 +24,6 @@ import { MaplibreTerradrawControl } from '@watergis/maplibre-gl-terradraw'
 
 import '@watergis/maplibre-gl-terradraw/dist/maplibre-gl-terradraw.css'
 import type { MapLibreEvent } from 'maplibre-gl';
-
-
 
 // Map style configuration
 const MAP_STYLE: StyleSpecification = {
@@ -46,23 +43,11 @@ const MAP_STYLE: StyleSpecification = {
   }]
 };
 
-// Layer style for GPX tracks
-const trackLayerStyle: LayerProps = {
-  id: 'gpx-tracks',
-  type: 'line',
-  paint: {
-    'line-color': '#2563eb',
-    'line-width': 3,
-    'line-opacity': 0.8
-  }
-};
-
 export const EditPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [gpxFiles, setGpxFiles] = useState<GPXFile[]>([]);
-  const [geoJsonData, setGeoJsonData] = useState<FeatureCollection | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [geoJsonData, setGeoJsonData] = useState<FeatureCollection<LineString, { fileName: string }> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewState, setViewState] = useState({
     longitude: 139.7671,
@@ -77,29 +62,17 @@ export const EditPage: React.FC = () => {
   const [draw, setDraw] = useState<MaplibreTerradrawControl | null>(null)
 
   const handleTerradrawOnLoad = useCallback((e: MapLibreEvent) => {
-    const maplibreTerradrawControl = new MaplibreTerradrawControl({
+    const draw = new MaplibreTerradrawControl({
       modes: ['render', 'linestring', 'select', 'delete-selection'],
       open: true,
     })
-    setDraw(maplibreTerradrawControl)
-    e.target.addControl(maplibreTerradrawControl, 'top-left')
-  }, [])
-
-  const handleTerradrawOnRemove = useCallback((e: MapLibreEvent) => {
-    if(draw) {
-      e.target.removeControl(draw)
-      setDraw(null)
-    }
-  }, [draw])
-
-  // Load GPX data from localStorage
-  useEffect(() => {
+    e.target.addControl(draw, 'top-left')
+    setDraw(draw)
+    const storedFiles = loadGPXData();
     try {
-      const storedFiles = loadGPXData();
       if (storedFiles && storedFiles.length > 0) {
         setGpxFiles(storedFiles);
         const geoJson = convertGPXToGeoJSON(storedFiles);
-        setGeoJsonData(geoJson);
 
         // Calculate bounds for initial view
         if (geoJson.features.length > 0) {
@@ -136,6 +109,9 @@ export const EditPage: React.FC = () => {
               zoom
             });
           }
+
+          const result = draw.getTerraDrawInstance().addFeatures(geoJson.features)
+          console.log({result})
         }
       } else {
         setError('編集するGPXファイルがありません。ホーム画面でファイルを読み込んでください。');
@@ -143,18 +119,15 @@ export const EditPage: React.FC = () => {
     } catch (err) {
       console.error('Failed to load GPX data:', err);
       setError('GPXデータの読み込みに失敗しました。');
-    } finally {
-      setIsLoading(false);
     }
-  }, []);
+  }, [])
 
-  // draw と GeoJSON の結びつけ
-  useEffect(() => {
-    if(draw && geoJsonData) {
-      // TODO: どうもレンダーされない
-      draw.getTerraDrawInstance().addFeatures(geoJsonData.features.map(f => ({...f, properties: { ...f.properties, mode: 'linestring' }})))
+  const handleTerradrawOnRemove = useCallback((e: MapLibreEvent) => {
+    if(draw) {
+      e.target.removeControl(draw)
+      setDraw(null)
     }
-  }, [draw, geoJsonData])
+  }, [draw])
 
   const handleDownload = useCallback(() => {
     if (!geoJsonData) return;
@@ -180,18 +153,6 @@ export const EditPage: React.FC = () => {
     console.error('Map error:', event);
     setError('マップの読み込み中にエラーが発生しました');
   }, []);
-
-  if (isLoading) {
-    return (
-      <Container maxWidth="md" sx={{ py: 4, textAlign: 'center' }}>
-        <CircularProgress size={60} sx={{ mb: 2 }} />
-        <Typography variant="h6">マップを読み込み中...</Typography>
-        <Typography variant="body2" color="text.secondary">
-          初回読み込み時は少し時間がかかる場合があります
-        </Typography>
-      </Container>
-    );
-  }
 
   if (error) {
     return (
@@ -260,13 +221,7 @@ export const EditPage: React.FC = () => {
           onLoad={handleTerradrawOnLoad}
           onRemove={handleTerradrawOnRemove}
         >
-          {/* {geoJsonData && geoJsonData.features.length > 0 && (
-            <Source id="gpx-data" type="geojson" data={geoJsonData}>
-              <Layer {...trackLayerStyle} />
-            </Source>
-          )} */}
-
-          <AttributionControl />
+        <AttributionControl />
 
         </Map>
 
