@@ -10,7 +10,8 @@ import { FileDropZone } from '../components/FileDropZone';
 import { FileSummary } from '../components/FileSummary';
 import { EditModeButtons } from '../components/EditModeButtons';
 import { parseGPXFile, sortGPXFilesByDate, getTotalTrackCount, getTotalPointCount } from '../utils/gpxParser';
-import { saveGPXData } from '../utils/gpxStorage';
+import { saveGPXData, saveGeoJSONData } from '../utils/gpxStorage';
+import { convertGPXToGeoJSON } from '../utils/geoJsonConverter';
 import type { GPXFile, GPXFileSummary } from '../types/gpx';
 
 export const HomePage: React.FC = () => {
@@ -39,8 +40,12 @@ export const HomePage: React.FC = () => {
         const sortedFiles = sortGPXFilesByDate([...gpxFiles, ...parsedFiles]);
         setGpxFiles(sortedFiles);
 
-        // localStorage に保存
+        // GPX データを localStorage に保存
         saveGPXData(sortedFiles);
+
+        // GeoJSON データに変換して localStorage に保存
+        const geoJsonData = convertGPXToGeoJSON(sortedFiles);
+        saveGeoJSONData(geoJsonData);
       }
     } catch (error) {
       setError(`ファイルの処理中にエラーが発生しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
@@ -59,6 +64,12 @@ export const HomePage: React.FC = () => {
 
     // localStorage を更新
     saveGPXData(updatedFiles);
+
+    // GeoJSON データも更新
+    if (updatedFiles.length > 0) {
+      const geoJsonData = convertGPXToGeoJSON(updatedFiles);
+      saveGeoJSONData(geoJsonData);
+    }
   };
 
   const summary: GPXFileSummary = {

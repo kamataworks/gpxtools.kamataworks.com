@@ -12,9 +12,8 @@ import {
 import { ArrowBack, Download } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import type { ErrorEvent as MaplibreErrorEvent } from 'react-map-gl/maplibre';
-import { loadGPXData } from '../utils/gpxStorage';
-import { convertGPXToGeoJSON, convertGeoJSONToGPX } from '../utils/geoJsonConverter';
-import type { GPXFile } from '../types/gpx';
+import { loadGeoJSONData } from '../utils/gpxStorage';
+import { convertGeoJSONToGPX } from '../utils/geoJsonConverter';
 import type { FeatureCollection, LineString } from 'geojson';
 
 import { Map, AttributionControl } from 'react-map-gl/maplibre';
@@ -46,7 +45,6 @@ const MAP_STYLE: StyleSpecification = {
 export const EditPage: React.FC = () => {
   const navigate = useNavigate();
 
-  const [gpxFiles, setGpxFiles] = useState<GPXFile[]>([]);
   const [geoJsonData, setGeoJsonData] = useState<FeatureCollection<LineString, { fileName: string }> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewState, setViewState] = useState({
@@ -68,57 +66,56 @@ export const EditPage: React.FC = () => {
     })
     e.target.addControl(draw, 'top-left')
     setDraw(draw)
-    const storedFiles = loadGPXData();
+
     try {
-      if (storedFiles && storedFiles.length > 0) {
-        setGpxFiles(storedFiles);
-        const geoJson = convertGPXToGeoJSON(storedFiles);
+      const geoJson = loadGeoJSONData();
+      if (geoJson && geoJson.features.length > 0) {
+        setGeoJsonData(geoJson as FeatureCollection<LineString, { fileName: string }>);
 
         // Calculate bounds for initial view
-        if (geoJson.features.length > 0) {
-          let minLng = Infinity, maxLng = -Infinity;
-          let minLat = Infinity, maxLat = -Infinity;
+        let minLng = Infinity, maxLng = -Infinity;
+        let minLat = Infinity, maxLat = -Infinity;
 
-          geoJson.features.forEach(feature => {
-            feature.geometry.coordinates.forEach(([lng, lat]) => {
-              minLng = Math.min(minLng, lng);
-              maxLng = Math.max(maxLng, lng);
-              minLat = Math.min(minLat, lat);
-              maxLat = Math.max(maxLat, lat);
-            });
+        geoJson.features.forEach((feature) => {
+          feature.geometry.coordinates.forEach((coord) => {
+            const [lng, lat] = coord;
+            minLng = Math.min(minLng, lng);
+            maxLng = Math.max(maxLng, lng);
+            minLat = Math.min(minLat, lat);
+            maxLat = Math.max(maxLat, lat);
           });
+        });
 
-          if (isFinite(minLng) && isFinite(maxLng) && isFinite(minLat) && isFinite(maxLat)) {
-            const centerLng = (minLng + maxLng) / 2;
-            const centerLat = (minLat + maxLat) / 2;
+        if (isFinite(minLng) && isFinite(maxLng) && isFinite(minLat) && isFinite(maxLat)) {
+          const centerLng = (minLng + maxLng) / 2;
+          const centerLat = (minLat + maxLat) / 2;
 
-            // Calculate appropriate zoom level
-            const lngDiff = maxLng - minLng;
-            const latDiff = maxLat - minLat;
-            const maxDiff = Math.max(lngDiff, latDiff);
+          // Calculate appropriate zoom level
+          const lngDiff = maxLng - minLng;
+          const latDiff = maxLat - minLat;
+          const maxDiff = Math.max(lngDiff, latDiff);
 
-            let zoom = 10;
-            if (maxDiff < 0.01) zoom = 15;
-            else if (maxDiff < 0.1) zoom = 12;
-            else if (maxDiff < 1) zoom = 9;
-            else zoom = 7;
+          let zoom = 10;
+          if (maxDiff < 0.01) zoom = 15;
+          else if (maxDiff < 0.1) zoom = 12;
+          else if (maxDiff < 1) zoom = 9;
+          else zoom = 7;
 
-            setViewState({
-              longitude: centerLng,
-              latitude: centerLat,
-              zoom
-            });
-          }
-
-          const result = draw.getTerraDrawInstance().addFeatures(geoJson.features)
-          console.log({result})
+          setViewState({
+            longitude: centerLng,
+            latitude: centerLat,
+            zoom
+          });
         }
+
+        const result = draw.getTerraDrawInstance().addFeatures(geoJson.features as any)
+        console.log({result})
       } else {
-        setError('編集するGPXファイルがありません。ホーム画面でファイルを読み込んでください。');
+        setError('編集するGeoJSONデータがありません。ホーム画面でファイルを読み込んでください。');
       }
     } catch (err) {
-      console.error('Failed to load GPX data:', err);
-      setError('GPXデータの読み込みに失敗しました。');
+      console.error('Failed to load GeoJSON data:', err);
+      setError('GeoJSONデータの読み込みに失敗しました。');
     }
   }, [])
 
@@ -241,10 +238,10 @@ export const EditPage: React.FC = () => {
         )}
       </Card>
 
-      {gpxFiles.length > 0 && (
+      {geoJsonData && geoJsonData.features.length > 0 && (
         <Box sx={{ mt: 2 }}>
           <Typography variant="body2" color="text.secondary">
-            読み込み済みファイル: {gpxFiles.map(f => f.name).join(', ')}
+            編集中のトラック数: {geoJsonData.features.length}
           </Typography>
         </Box>
       )}
