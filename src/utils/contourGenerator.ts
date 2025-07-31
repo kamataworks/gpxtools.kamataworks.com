@@ -291,8 +291,8 @@ function generateSmoothPath(points: { x: number; y: number }[]): string {
 // メイン関数：等高線背景のSVG data URLを生成
 export function generateContourBackground(): string {
   try {
-    const width = 1920;
-    const height = 1080;
+    const width = 3840;
+    const height = 1488;
     const pointCount = 40; // 点の数を倍増
     const levels = Array(100).fill(0).map((_, i) => i + 1); //[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100]; // より密な等高線
 
@@ -321,8 +321,8 @@ export function generateContourBackground(): string {
             .contour-line {
               fill: none;
               stroke: #4f46e5;
-              stroke-width: 1;
-              stroke-opacity: 0.3;
+              stroke-width: .5;
+              stroke-opacity: 0.2;
               stroke-linecap: round;
               stroke-linejoin: round;
             }

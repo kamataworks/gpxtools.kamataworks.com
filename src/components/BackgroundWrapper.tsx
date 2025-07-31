@@ -38,18 +38,18 @@ export const BackgroundWrapper: React.FC<BackgroundWrapperProps> = ({ children }
       {/* 背景レイヤー */}
       <Box
         sx={{
-          position: 'absolute',
+          position: 'fixed',
           top: 0,
           left: 0,
-          right: 0,
-          bottom: 0,
+          width: '100vw',
+          height: '100vh',
           backgroundImage: backgroundUrl ? `url("${backgroundUrl}")` : 'none',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
-          backgroundAttachment: 'fixed',
+          backgroundAttachment: 'scroll',
           opacity: isLoaded ? 1 : 0,
-          transition: 'opacity 1s ease-in-out',
+          transition: 'opacity .5s ease-in-out',
           zIndex: -1,
         }}
       />
