@@ -245,6 +245,58 @@ export const HomePage: React.FC = () => {
           {error}
         </Alert>
       </Snackbar>
+
+      {/* Footer */}
+      <Box
+        sx={{
+          textAlign: 'center',
+          pt: 3,
+          mt: 4,
+        }}
+      >
+        <Typography variant="body2" color="text.secondary" gutterBottom>
+          制作: <Link
+            href="https://www.kamataworks.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            underline="hover"
+            color="inherit"
+          >
+          鎌田製作所（カマタワークス）
+          </Link>
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          <Link
+            href="https://github.com/kamataworks/gpxtools.kamataworks.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            underline="hover"
+            color="inherit"
+          >
+            オープンソースプロジェクト
+          </Link>
+          {' | '}
+          <Link
+            href="https://github.com/kamataworks/gpxtools.kamataworks.com/issues/new/choose"
+            target="_blank"
+            rel="noopener noreferrer"
+            underline="hover"
+            color="inherit"
+          >
+            GitHub
+          </Link>
+          {' | '}
+          <Link
+            href="https://www.kamataworks.com/contact"
+            target="_blank"
+            rel="noopener noreferrer"
+            underline="hover"
+            color="inherit"
+          >
+            企業向けご相談
+          </Link>
+        </Typography>
+      </Box>
     </Container>
   );
 };
