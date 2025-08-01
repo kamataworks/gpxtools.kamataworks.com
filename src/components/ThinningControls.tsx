@@ -29,21 +29,17 @@ interface ThinningControlsProps {
 }
 
 const SEQUENCE_OPTIONS = [
-  { value: 2, label: '1/2' },
   { value: 4, label: '1/4' },
-  { value: 8, label: '1/8' },
   { value: 16, label: '1/16' },
-  { value: 32, label: '1/32' },
   { value: 64, label: '1/64' },
-  { value: 128, label: '1/128' }
+  { value: 256, label: '1/256' },
 ];
 
 const TIME_OPTIONS = [
-  { value: 1, label: '1分間隔' },
   { value: 5, label: '5分間隔' },
   { value: 10, label: '10分間隔' },
   { value: 30, label: '30分間隔' },
-  { value: 60, label: '1時間間隔' }
+  { value: 60, label: '1時間間隔' },
 ];
 
 const DISTANCE_OPTIONS = [
@@ -51,7 +47,6 @@ const DISTANCE_OPTIONS = [
   { value: 50, label: '50m間隔' },
   { value: 100, label: '100m間隔' },
   { value: 500, label: '500m間隔' },
-  { value: 1000, label: '1km間隔' }
 ];
 
 // パーサー関数
