@@ -9,16 +9,19 @@ import {
 } from '@mui/material';
 import { Edit, MergeType } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { loadGPXData, saveGeoJSONData } from '../utils/gpxStorage';
+import { saveGeoJSONData } from '../utils/gpxStorage';
 import { convertGPXToGeoJSON, convertGPXToMergedGeoJSON, checkTimeRangeOverlaps } from '../utils/geoJsonConverter';
 import type { TimeOverlapResult } from '../utils/geoJsonConverter';
+import type { GPXFile } from '../types/gpx';
 
 interface EditModeButtonsProps {
   disabled?: boolean;
+  gpxFiles: GPXFile[];
 }
 
 export const EditModeButtons: React.FC<EditModeButtonsProps> = ({
   disabled = false,
+  gpxFiles,
 }) => {
   const navigate = useNavigate();
   const [timeOverlapCheck, setTimeOverlapCheck] = useState<TimeOverlapResult | null>(null);
@@ -26,7 +29,6 @@ export const EditModeButtons: React.FC<EditModeButtonsProps> = ({
 
   useEffect(() => {
     const checkTimeOverlaps = () => {
-      const gpxFiles = loadGPXData();
       if (gpxFiles && gpxFiles.length > 0) {
         const overlapResult = checkTimeRangeOverlaps(gpxFiles);
         setTimeOverlapCheck(overlapResult);
@@ -37,10 +39,9 @@ export const EditModeButtons: React.FC<EditModeButtonsProps> = ({
     };
 
     checkTimeOverlaps();
-  }, []);
+  }, [gpxFiles]);
 
   const handleSplitEdit = () => {
-    const gpxFiles = loadGPXData();
     if (gpxFiles) {
       const geoJsonData = convertGPXToGeoJSON(gpxFiles);
       saveGeoJSONData(geoJsonData);
@@ -49,7 +50,6 @@ export const EditModeButtons: React.FC<EditModeButtonsProps> = ({
   };
 
   const handleMergedEdit = () => {
-    const gpxFiles = loadGPXData();
     if (gpxFiles) {
       const mergedGeoJsonData = convertGPXToMergedGeoJSON(gpxFiles);
       saveGeoJSONData(mergedGeoJsonData);

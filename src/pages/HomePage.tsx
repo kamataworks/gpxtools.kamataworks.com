@@ -113,7 +113,7 @@ export const HomePage: React.FC = () => {
       {gpxFiles.length > 0 && (
         <Box sx={{ mt: 4 }}>
           <FileSummary summary={summary} onFileDelete={handleFileDelete} />
-          <EditModeButtons disabled={gpxFiles.length === 0} />
+          <EditModeButtons disabled={gpxFiles.length === 0} gpxFiles={gpxFiles} />
         </Box>
       )}
 
