@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   Container,
   Typography,
@@ -15,6 +15,8 @@ import type { ErrorEvent as MaplibreErrorEvent } from 'react-map-gl/maplibre';
 import { loadGeoJSONData } from '../utils/gpxStorage';
 import { convertGeoJSONToGPX } from '../utils/geoJsonConverter';
 import type { FeatureCollection, LineString } from 'geojson';
+import { ThinningControls, type ThinningOptions } from '../components/ThinningControls';
+import { thinBySequence, thinByTime, thinByDistance } from '../utils/trackThinning';
 
 import { Map, AttributionControl } from 'react-map-gl/maplibre';
 import type { StyleSpecification } from 'react-map-gl/maplibre'
@@ -45,12 +47,17 @@ const MAP_STYLE: StyleSpecification = {
 export const EditPage: React.FC = () => {
   const navigate = useNavigate();
 
-  const [geoJsonData, setGeoJsonData] = useState<FeatureCollection<LineString, { fileName: string }> | null>(null);
+  const [originalGeoJsonData, setOriginalGeoJsonData] = useState<FeatureCollection<LineString, { fileName: string, timeStamps?: (string | null)[] }> | null>(null);
+  const [geoJsonData, setGeoJsonData] = useState<FeatureCollection<LineString, { fileName: string, timeStamps?: (string | null)[] }> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewState, setViewState] = useState({
     longitude: 139.7671,
     latitude: 35.6812,
     zoom: 10
+  });
+  const [thinningOptions, setThinningOptions] = useState<ThinningOptions>({
+    type: 'none',
+    value: null
   });
 
   const handleBackToHome = () => {
@@ -70,7 +77,9 @@ export const EditPage: React.FC = () => {
     try {
       const geoJson = loadGeoJSONData();
       if (geoJson && geoJson.features.length > 0) {
-        setGeoJsonData(geoJson as FeatureCollection<LineString, { fileName: string }>);
+        const typedGeoJson = geoJson as FeatureCollection<LineString, { fileName: string, timeStamps?: (string | null)[] }>;
+        setOriginalGeoJsonData(typedGeoJson);
+        setGeoJsonData(typedGeoJson);
 
         // Calculate bounds for initial view
         let minLng = Infinity, maxLng = -Infinity;
@@ -145,6 +154,76 @@ export const EditPage: React.FC = () => {
       setError('ファイルのダウンロードに失敗しました');
     }
   }, [geoJsonData]);
+
+  // 間引き処理されたGeoJSONデータを計算
+  const processedGeoJsonData = useMemo(() => {
+    if (!originalGeoJsonData) return null;
+
+    const processedFeatures = originalGeoJsonData.features.map(feature => {
+      let coordinates = feature.geometry.coordinates as [number, number][];
+      let timeStamps = feature.properties.timeStamps || [];
+
+      // 間引き処理を適用
+      if (thinningOptions.type !== 'none' && thinningOptions.value !== null) {
+        let result;
+
+        switch (thinningOptions.type) {
+          case 'sequence':
+            result = thinBySequence(coordinates, timeStamps, thinningOptions.value);
+            break;
+          case 'time':
+            result = thinByTime(coordinates, timeStamps, thinningOptions.value);
+            break;
+          case 'distance':
+            result = thinByDistance(coordinates, timeStamps, thinningOptions.value);
+            break;
+          default:
+            result = { coordinates, timeStamps };
+        }
+
+        coordinates = result.coordinates;
+        timeStamps = result.timeStamps;
+      }
+
+      return {
+        ...feature,
+        geometry: {
+          ...feature.geometry,
+          coordinates
+        },
+        properties: {
+          ...feature.properties,
+          timeStamps
+        }
+      };
+    });
+
+    return {
+      ...originalGeoJsonData,
+      features: processedFeatures
+    };
+  }, [originalGeoJsonData, thinningOptions]);
+
+  // 地図データの更新
+  React.useEffect(() => {
+    if (processedGeoJsonData && draw) {
+      try {
+        // 既存のフィーチャーをクリア
+        const terraDrawInstance = draw.getTerraDrawInstance();
+        terraDrawInstance.clear();
+
+        // 新しいフィーチャーを追加
+        terraDrawInstance.addFeatures(processedGeoJsonData.features as any);
+        setGeoJsonData(processedGeoJsonData);
+      } catch (err) {
+        console.error('Failed to update map features:', err);
+      }
+    }
+  }, [processedGeoJsonData, draw]);
+
+  const handleThinningOptionsChange = useCallback((newOptions: ThinningOptions) => {
+    setThinningOptions(newOptions);
+  }, []);
 
   const handleMapError = useCallback((event: MaplibreErrorEvent) => {
     console.error('Map error:', event);
@@ -239,11 +318,19 @@ export const EditPage: React.FC = () => {
       </Card>
 
       {geoJsonData && geoJsonData.features.length > 0 && (
-        <Box sx={{ mt: 2 }}>
-          <Typography variant="body2" color="text.secondary">
-            編集中のトラック数: {geoJsonData.features.length}
-          </Typography>
-        </Box>
+        <>
+          <ThinningControls
+            coordinates={geoJsonData.features.length > 0 ? geoJsonData.features[0].geometry.coordinates as [number, number][] : []}
+            timeStamps={geoJsonData.features.length > 0 ? geoJsonData.features[0].properties.timeStamps || [] : []}
+            options={thinningOptions}
+            onOptionsChange={handleThinningOptionsChange}
+          />
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              編集中のトラック数: {geoJsonData.features.length}
+            </Typography>
+          </Box>
+        </>
       )}
     </Container>
   );
