@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Button,
   Card,
@@ -26,6 +26,8 @@ export const EditModeButtons: React.FC<EditModeButtonsProps> = ({
   const navigate = useNavigate();
   const [timeOverlapCheck, setTimeOverlapCheck] = useState<TimeOverlapResult | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const totalTracks = useMemo(() => gpxFiles.reduce((sum, file) => sum + file.tracks.length, 0), [gpxFiles]);
 
   useEffect(() => {
     const checkTimeOverlaps = () => {
@@ -84,27 +86,42 @@ export const EditModeButtons: React.FC<EditModeButtonsProps> = ({
         )}
 
         <Stack spacing={2}>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<MergeType />}
-            onClick={handleMergedEdit}
-            disabled={disabled || !canMerge}
-            fullWidth
-          >
-            トラックを結合して編集
-          </Button>
 
-          <Button
-            variant="outlined"
-            color="primary"
-            startIcon={<Edit />}
-            onClick={handleSplitEdit}
-            disabled={disabled}
-            fullWidth
-          >
-            トラックを分割して編集
-          </Button>
+          {totalTracks > 1 ?
+          <>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<MergeType />}
+              onClick={handleMergedEdit}
+              disabled={disabled || !canMerge}
+              fullWidth
+            >
+              トラックを結合して編集
+            </Button>
+
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<Edit />}
+              onClick={handleSplitEdit}
+              disabled={disabled}
+              fullWidth
+            >
+              トラックを分割して編集
+            </Button>
+          </>
+          : <Button
+              variant="contained"
+              color="primary"
+              startIcon={<MergeType />}
+              onClick={handleMergedEdit}
+              disabled={disabled || !canMerge}
+              fullWidth
+            >
+              トラックを編集
+            </Button>
+          }
 
         </Stack>
       </CardContent>
