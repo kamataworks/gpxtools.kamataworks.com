@@ -14,7 +14,7 @@ export interface TimeOverlapResult {
 }
 
 export const convertGPXToGeoJSON = (gpxFiles: GPXFile[]): FeatureCollection<LineString, { fileName: string, mode: 'linestring' }> => {
-  const features: Feature<LineString, { fileName: string, mode: 'linestring', trackName: string, fileIndex: number, trackIndex: number, segmentIndex: number }>[] = [];
+  const features: Feature<LineString, { fileName: string, mode: 'linestring', trackName: string, fileIndex: number, trackIndex: number, segmentIndex: number, timeStamps: (string | null)[] }>[] = [];
 
   gpxFiles.forEach((file, fileIndex) => {
     file.tracks.forEach((track, trackIndex) => {
@@ -24,6 +24,10 @@ export const convertGPXToGeoJSON = (gpxFiles: GPXFile[]): FeatureCollection<Line
             parseFloat(point.lon.toFixed(9)),
             parseFloat(point.lat.toFixed(9)),
           ]);
+
+          const timeStamps: (string | null)[] = segment.points.map(point =>
+            point.time ? point.time.toISOString() : null
+          );
 
           features.push({
             type: 'Feature',
@@ -37,7 +41,8 @@ export const convertGPXToGeoJSON = (gpxFiles: GPXFile[]): FeatureCollection<Line
               trackName: track.name || `Track ${trackIndex + 1}`,
               fileIndex,
               trackIndex,
-              segmentIndex
+              segmentIndex,
+              timeStamps
             }
           });
         }
@@ -51,7 +56,7 @@ export const convertGPXToGeoJSON = (gpxFiles: GPXFile[]): FeatureCollection<Line
   };
 };
 
-export const convertGeoJSONToGPX = (geoJson: FeatureCollection<LineString, { fileName: string }>): string => {
+export const convertGeoJSONToGPX = (geoJson: FeatureCollection<LineString, { fileName: string, timeStamps?: (string | null)[] }>): string => {
   const gpxHeader = `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="GPX Tools" xmlns="http://www.topografix.com/GPX/1/1">
   <metadata>
@@ -62,7 +67,7 @@ export const convertGeoJSONToGPX = (geoJson: FeatureCollection<LineString, { fil
   const gpxFooter = '</gpx>';
 
   let tracks = '';
-  const tracksByFile = new Map<string, Feature<LineString>[]>();
+  const tracksByFile = new Map<string, Feature<LineString, { fileName: string, timeStamps?: (string | null)[] }>[]>();
 
   // Group features by file name
   geoJson.features.forEach(feature => {
@@ -82,9 +87,20 @@ export const convertGeoJSONToGPX = (geoJson: FeatureCollection<LineString, { fil
       tracks += `
     <trkseg>`;
 
-      feature.geometry.coordinates.forEach(([lon, lat]) => {
+      feature.geometry.coordinates.forEach(([lon, lat], index) => {
+        const timeStamps = feature.properties.timeStamps;
+        const timeStamp = timeStamps && timeStamps[index] ? timeStamps[index] : null;
+
         tracks += `
-      <trkpt lat="${lat}" lon="${lon}"></trkpt>`;
+      <trkpt lat="${lat}" lon="${lon}">`;
+
+        if (timeStamp) {
+          tracks += `
+        <time>${timeStamp}</time>`;
+        }
+
+        tracks += `
+      </trkpt>`;
       });
 
       tracks += `
@@ -113,7 +129,7 @@ export const checkTimeRangeOverlaps = (gpxFiles: GPXFile[]): TimeOverlapResult =
       const pointsWithTime = allPoints.filter(point => point.time);
 
       if (pointsWithTime.length > 0) {
-        // @ts-ignore
+        // @ts-expect-error - point.time is filtered to be non-null above
         const times = pointsWithTime.map(point => new Date(point.time));
         const startTime = new Date(Math.min(...times.map(t => t.getTime())));
         const endTime = new Date(Math.max(...times.map(t => t.getTime())));
@@ -196,11 +212,16 @@ export const convertGPXToMergedGeoJSON = (gpxFiles: GPXFile[]): FeatureCollectio
     parseFloat(item.point.lat.toFixed(9))
   ]);
 
+  // Create time stamps array
+  const timeStamps: (string | null)[] = allPointsWithTime.map(item =>
+    item.time ? item.time.toISOString() : null
+  );
+
   // Get unique file names for the merged track name
   const fileNames = [...new Set(allPointsWithTime.map(item => item.fileName))];
   const mergedFileName = fileNames.join(' + ');
 
-  const feature: Feature<LineString, { fileName: string, mode: 'linestring' }> = {
+  const feature: Feature<LineString, { fileName: string, mode: 'linestring', timeStamps: (string | null)[] }> = {
     type: 'Feature',
     geometry: {
       type: 'LineString',
@@ -208,7 +229,8 @@ export const convertGPXToMergedGeoJSON = (gpxFiles: GPXFile[]): FeatureCollectio
     },
     properties: {
       fileName: mergedFileName,
-      mode: 'linestring'
+      mode: 'linestring',
+      timeStamps
     }
   };
 
