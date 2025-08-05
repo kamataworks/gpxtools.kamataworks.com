@@ -215,12 +215,6 @@ export const EditPage: React.FC = () => {
       <Box sx={{ mb: 2 }}>
         <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
           <Button
-            startIcon={<ArrowBack />}
-            onClick={handleBackToHome}
-          >
-            ホームに戻る
-          </Button>
-          <Button
             startIcon={<Tune />}
             onClick={handleBackToThinning}
             variant="outlined"
@@ -267,13 +261,6 @@ export const EditPage: React.FC = () => {
         )}
       </Card>
 
-      {geoJsonData && geoJsonData.features.length > 0 && (
-        <Box sx={{ mt: 2 }}>
-          <Typography variant="body2" color="text.secondary">
-            編集中のトラック数: {geoJsonData.features.length}
-          </Typography>
-        </Box>
-      )}
 
       {/* 確認ダイアログ */}
       <Dialog

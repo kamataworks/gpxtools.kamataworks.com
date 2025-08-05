@@ -89,19 +89,37 @@ export const ThinningMap: React.FC<ThinningMapProps> = ({ geoJsonData }) => {
     }
   };
 
-  // Point layer style for start/end points
-  const pointLayer = {
-    id: 'gpx-points',
+  // Point layer styles for different point types
+  const startEndPointLayer = {
+    id: 'gpx-start-end-points',
     type: 'circle' as const,
+    filter: ['any', ['==', ['get', 'type'], 'start'], ['==', ['get', 'type'], 'end']] as any,
     paint: {
       'circle-radius': 6,
-      'circle-color': '#f44336',
+      'circle-color': [
+        'case',
+        ['==', ['get', 'type'], 'start'], '#4caf50', // Green for start
+        '#f44336' // Red for end
+      ] as any,
       'circle-stroke-color': '#ffffff',
       'circle-stroke-width': 2
     }
   };
 
-  // Create point features for start and end points
+  const intermediatePointLayer = {
+    id: 'gpx-intermediate-points',
+    type: 'circle' as const,
+    filter: ['==', ['get', 'type'], 'intermediate'] as any,
+    paint: {
+      'circle-radius': 4,
+      'circle-color': '#2196f3',
+      'circle-stroke-color': '#ffffff',
+      'circle-stroke-width': 2,
+      'circle-opacity': 0.8,
+    }
+  };
+
+  // Create point features for all track points
   const createPointFeatures = (geoJson: FeatureCollection<LineString>): FeatureCollection => {
     const points: Array<{
       type: 'Feature';
@@ -112,40 +130,29 @@ export const ThinningMap: React.FC<ThinningMapProps> = ({ geoJsonData }) => {
       properties: {
         type: string;
         trackIndex: number;
+        pointIndex: number;
       };
     }> = [];
 
-    geoJson.features.forEach((feature, index) => {
+    geoJson.features.forEach((feature, trackIndex) => {
       const coordinates = feature.geometry.coordinates;
-      if (coordinates.length > 0) {
-        // Start point
+      coordinates.forEach((coord, pointIndex) => {
+        const isStart = pointIndex === 0;
+        const isEnd = pointIndex === coordinates.length - 1;
+
         points.push({
           type: 'Feature',
           geometry: {
             type: 'Point',
-            coordinates: coordinates[0] as [number, number]
+            coordinates: coord as [number, number]
           },
           properties: {
-            type: 'start',
-            trackIndex: index
+            type: isStart ? 'start' : isEnd ? 'end' : 'intermediate',
+            trackIndex,
+            pointIndex
           }
         });
-
-        // End point
-        if (coordinates.length > 1) {
-          points.push({
-            type: 'Feature',
-            geometry: {
-              type: 'Point',
-              coordinates: coordinates[coordinates.length - 1] as [number, number]
-            },
-            properties: {
-              type: 'end',
-              trackIndex: index
-            }
-          });
-        }
-      }
+      });
     });
 
     return {
@@ -172,9 +179,10 @@ export const ThinningMap: React.FC<ThinningMapProps> = ({ geoJsonData }) => {
         <Layer {...lineLayer} />
       </Source>
 
-      {/* Start/End Points Source and Layer */}
+      {/* All Points Source and Layers */}
       <Source id="gpx-points" type="geojson" data={pointFeatures}>
-        <Layer {...pointLayer} />
+        <Layer {...intermediatePointLayer} />
+        <Layer {...startEndPointLayer} />
       </Source>
     </Map>
   );

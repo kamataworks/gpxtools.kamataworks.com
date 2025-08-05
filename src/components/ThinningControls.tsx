@@ -26,6 +26,7 @@ interface ThinningControlsProps {
   timeStamps: (string | null)[];
   options: ThinningOptions;
   onOptionsChange: (options: ThinningOptions) => void;
+  processedPointCount?: number;
 }
 
 const SEQUENCE_OPTIONS = [
@@ -120,7 +121,8 @@ export const ThinningControls: React.FC<ThinningControlsProps> = ({
   coordinates,
   timeStamps,
   options,
-  onOptionsChange
+  onOptionsChange,
+  processedPointCount
 }) => {
   const stats: TrackStats = calculateTrackStats(coordinates, timeStamps);
 
@@ -236,9 +238,16 @@ export const ThinningControls: React.FC<ThinningControlsProps> = ({
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
           <Box sx={{ flex: '1 1 200px' }}>
             <Typography variant="body2">
-              <strong>総点数:</strong> {stats.totalPoints.toLocaleString()}点
+              <strong>元データ:</strong> {stats.totalPoints.toLocaleString()}点
             </Typography>
           </Box>
+          {processedPointCount !== undefined && (
+            <Box sx={{ flex: '1 1 200px' }}>
+              <Typography variant="body2">
+                <strong>間引き後:</strong> {processedPointCount.toLocaleString()}点
+              </Typography>
+            </Box>
+          )}
           <Box sx={{ flex: '1 1 200px' }}>
             <Typography variant="body2">
               <strong>平均時間間隔:</strong> {formatTimeInterval(stats.averageTimeInterval)}

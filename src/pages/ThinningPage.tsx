@@ -7,7 +7,6 @@ import {
   CardContent,
   Button,
   Alert,
-  Paper,
 } from '@mui/material';
 import { ArrowBack, Edit } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -165,46 +164,52 @@ export const ThinningPage: React.FC = () => {
         </Typography>
       </Box>
 
-      {/* 地図表示 */}
-      <Card sx={{ height: '60vh', position: 'relative', overflow: 'hidden', mb: 2 }}>
-        {processedGeoJsonData && (
-          <ThinningMap geoJsonData={processedGeoJsonData} />
-        )}
-      </Card>
+      {/* レスポンシブレイアウト: PC画面では左右分割、モバイルでは縦並び */}
+      <Box sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', lg: 'row' },
+        gap: 2,
+        height: { xs: 'auto', lg: 'calc(100vh - 200px)' }
+      }}>
 
-      {/* 間引きコントロール */}
-      {originalGeoJsonData && originalGeoJsonData.features.length > 0 && (
-        <ThinningControls
-          coordinates={originalGeoJsonData.features.length > 0 ? originalGeoJsonData.features[0].geometry.coordinates as [number, number][] : []}
-          timeStamps={originalGeoJsonData.features.length > 0 ? originalGeoJsonData.features[0].properties.timeStamps || [] : []}
-          options={thinningOptions}
-          onOptionsChange={handleThinningOptionsChange}
-        />
-      )}
-
-      {/* 統計情報と次へボタン */}
-      {processedGeoJsonData && processedGeoJsonData.features.length > 0 && (
-        <Paper sx={{ p: 2, mt: 2, backgroundColor: 'primary.50' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-            <Box>
-              <Typography variant="body2" color="text.secondary">
-                処理後のトラック数: {processedGeoJsonData.features.length}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                元データ: {originalGeoJsonData?.features[0]?.geometry.coordinates.length || 0}点 →
-                処理後: {processedGeoJsonData.features[0]?.geometry.coordinates.length || 0}点
-              </Typography>
-            </Box>
-            <Button
-              variant="contained"
-              startIcon={<Edit />}
-              onClick={handleProceedToEdit}
-              size="large"
-            >
-              編集ページへ進む
-            </Button>
+        {/* 間引きコントロール */}
+        <Box sx={{ flex: { xs: 'none', lg: '1 1 34%' } }}>
+          <Box sx={{ height: { xs: 'auto', lg: '100%' }, overflow: 'auto' }}>
+            {originalGeoJsonData && originalGeoJsonData.features.length > 0 && (
+              <ThinningControls
+                coordinates={originalGeoJsonData.features.length > 0 ? originalGeoJsonData.features[0].geometry.coordinates as [number, number][] : []}
+                timeStamps={originalGeoJsonData.features.length > 0 ? originalGeoJsonData.features[0].properties.timeStamps || [] : []}
+                options={thinningOptions}
+                onOptionsChange={handleThinningOptionsChange}
+                processedPointCount={processedGeoJsonData?.features[0]?.geometry.coordinates.length}
+              />
+            )}
           </Box>
-        </Paper>
+        </Box>
+
+        {/* 地図表示 */}
+        <Box sx={{ flex: { xs: 'none', lg: '1 1 66%' } }}>
+          <Card sx={{ height: { xs: '50vh', lg: '100%' }, position: 'relative', overflow: 'hidden' }}>
+            {processedGeoJsonData && (
+              <ThinningMap geoJsonData={processedGeoJsonData} />
+            )}
+          </Card>
+        </Box>
+
+      </Box>
+
+      {/* 編集ページへ進むボタン */}
+      {processedGeoJsonData && processedGeoJsonData.features.length > 0 && (
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+          <Button
+            variant="contained"
+            startIcon={<Edit />}
+            onClick={handleProceedToEdit}
+            size="large"
+          >
+            編集ページへ進む
+          </Button>
+        </Box>
       )}
     </Container>
   );
