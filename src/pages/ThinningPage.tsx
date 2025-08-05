@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { loadOriginalGeoJSONData, saveGeoJSONData } from '../utils/gpxStorage';
 import type { FeatureCollection, LineString } from 'geojson';
 import { ThinningControls, type ThinningOptions } from '../components/ThinningControls';
+import { ThinningStats } from '../components/ThinningStats';
 import { thinBySequence, thinByTime, thinByDistance } from '../utils/trackThinning';
 import { ThinningMap } from '../components/ThinningMap';
 
@@ -172,45 +173,80 @@ export const ThinningPage: React.FC = () => {
         height: { xs: 'auto', lg: 'calc(100vh - 200px)' }
       }}>
 
-        {/* 間引きコントロール */}
-        <Box sx={{ flex: { xs: 'none', lg: '1 1 34%' } }}>
-          <Box sx={{ height: { xs: 'auto', lg: '100%' }, overflow: 'auto' }}>
+        {/* 左サイドバー: 統計情報（固定） + 間引きコントロール（スクロール） */}
+        <Box sx={{
+          flex: { xs: 'none', lg: '1 1 34%' },
+          display: 'flex',
+          flexDirection: 'column',
+          height: { xs: 'auto', lg: '100%' }
+        }}>
+          {/* 統計情報（固定表示） */}
+          {originalGeoJsonData && originalGeoJsonData.features.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <ThinningStats
+                coordinates={originalGeoJsonData.features[0].geometry.coordinates as [number, number][]}
+                timeStamps={originalGeoJsonData.features[0].properties.timeStamps || []}
+                processedPointCount={processedGeoJsonData?.features[0]?.geometry.coordinates.length}
+              />
+            </Box>
+          )}
+
+          {/* 間引きコントロール（スクロール可能） */}
+          <Box sx={{
+            flex: 1,
+            overflow: { xs: 'visible', lg: 'auto' },
+            minHeight: 0
+          }}>
             {originalGeoJsonData && originalGeoJsonData.features.length > 0 && (
               <ThinningControls
-                coordinates={originalGeoJsonData.features.length > 0 ? originalGeoJsonData.features[0].geometry.coordinates as [number, number][] : []}
-                timeStamps={originalGeoJsonData.features.length > 0 ? originalGeoJsonData.features[0].properties.timeStamps || [] : []}
                 options={thinningOptions}
                 onOptionsChange={handleThinningOptionsChange}
-                processedPointCount={processedGeoJsonData?.features[0]?.geometry.coordinates.length}
               />
             )}
           </Box>
         </Box>
 
-        {/* 地図表示 */}
-        <Box sx={{ flex: { xs: 'none', lg: '1 1 66%' } }}>
-          <Card sx={{ height: { xs: '50vh', lg: '100%' }, position: 'relative', overflow: 'hidden' }}>
+        {/* 右サイドバー: 地図 + 編集ページへ進むボタン */}
+        <Box sx={{
+          flex: { xs: 'none', lg: '1 1 66%' },
+          display: 'flex',
+          flexDirection: 'column',
+          height: { xs: 'auto', lg: '100%' }
+        }}>
+          {/* 地図表示 */}
+          <Card sx={{
+            flex: { xs: 'none', lg: 1 },
+            height: { xs: '400px', lg: 'auto' },
+            minHeight: { xs: '400px', lg: 0 },
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
             {processedGeoJsonData && (
               <ThinningMap geoJsonData={processedGeoJsonData} />
             )}
           </Card>
+
+          {/* 編集ページへ進むボタン */}
+          {processedGeoJsonData && processedGeoJsonData.features.length > 0 && (
+            <Box sx={{
+              mt: 2,
+              display: 'flex',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <Button
+                variant="contained"
+                startIcon={<Edit />}
+                onClick={handleProceedToEdit}
+                size="large"
+              >
+                編集ページへ進む
+              </Button>
+            </Box>
+          )}
         </Box>
 
       </Box>
-
-      {/* 編集ページへ進むボタン */}
-      {processedGeoJsonData && processedGeoJsonData.features.length > 0 && (
-        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
-          <Button
-            variant="contained"
-            startIcon={<Edit />}
-            onClick={handleProceedToEdit}
-            size="large"
-          >
-            編集ページへ進む
-          </Button>
-        </Box>
-      )}
     </Container>
   );
 };
