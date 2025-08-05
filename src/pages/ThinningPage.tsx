@@ -7,8 +7,9 @@ import {
   CardContent,
   Button,
   Alert,
+  Link,
 } from '@mui/material';
-import { ArrowBack, Edit } from '@mui/icons-material';
+import { ArrowBack, Edit, Lightbulb } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { loadOriginalGeoJSONData, saveGeoJSONData } from '../utils/gpxStorage';
 import type { FeatureCollection, LineString } from 'geojson';
@@ -16,6 +17,7 @@ import { ThinningControls, type ThinningOptions } from '../components/ThinningCo
 import { ThinningStats } from '../components/ThinningStats';
 import { thinBySequence, thinByTime, thinByDistance } from '../utils/trackThinning';
 import { ThinningMap } from '../components/ThinningMap';
+import { TipsModal } from '../components/TipsModal';
 
 export const ThinningPage: React.FC = () => {
   const navigate = useNavigate();
@@ -26,6 +28,7 @@ export const ThinningPage: React.FC = () => {
     type: 'none',
     value: null
   });
+  const [tipsModalOpen, setTipsModalOpen] = useState(false);
 
   const handleBackToHome = () => {
     navigate('/');
@@ -160,9 +163,18 @@ export const ThinningPage: React.FC = () => {
         <Typography variant="h4" component="h1" gutterBottom>
           GPX間引き設定
         </Typography>
-        <Typography variant="body1" color="text.secondary">
+        <Typography variant="body1" color="text.secondary" sx={{ display: 'inline' }}>
           GPXトラックの間引き設定を行います。設定後、編集ページで詳細な編集が可能です。
         </Typography>
+        <Link
+          component="button"
+          variant="body2"
+          onClick={() => setTipsModalOpen(true)}
+          sx={{ ml: 1, cursor: 'pointer' }}
+        >
+          <Lightbulb fontSize="small" />
+          ヒント
+        </Link>
       </Box>
 
       {/* レスポンシブレイアウト: PC画面では左右分割、モバイルでは縦並び */}
@@ -247,6 +259,17 @@ export const ThinningPage: React.FC = () => {
         </Box>
 
       </Box>
+
+      {/* ヒントモーダル */}
+      <TipsModal
+        open={tipsModalOpen}
+        onClose={() => setTipsModalOpen(false)}
+        title="間引き設定のヒント"
+        tips={[
+          'データの間引きを行うことで、編集が容易になり、ファイルサイズを最適化できます。',
+          'コンピューターの性能によりますが、目安として200点程度に調整することをお勧めします。'
+        ]}
+      />
     </Container>
   );
 };

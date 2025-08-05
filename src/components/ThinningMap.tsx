@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Map, Source, Layer, AttributionControl } from 'react-map-gl/maplibre';
+import { Map, Source, Layer } from 'react-map-gl/maplibre';
 import type { StyleSpecification } from 'react-map-gl/maplibre';
 import type { FeatureCollection, LineString } from 'geojson';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -172,7 +172,6 @@ export const ThinningMap: React.FC<ThinningMapProps> = ({ geoJsonData }) => {
       onError={handleMapError}
       interactiveLayerIds={[]} // Disable interaction with layers
     >
-      <AttributionControl />
 
       {/* GPX Line Source and Layer */}
       <Source id="gpx-data" type="geojson" data={geoJsonData}>

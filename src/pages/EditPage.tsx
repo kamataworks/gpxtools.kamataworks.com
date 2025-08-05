@@ -13,15 +13,17 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  Link,
 } from '@mui/material';
-import { ArrowBack, Download, Tune } from '@mui/icons-material';
+import { ArrowBack, Download, Lightbulb } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import type { ErrorEvent as MaplibreErrorEvent } from 'react-map-gl/maplibre';
 import { loadGeoJSONData } from '../utils/gpxStorage';
 import { convertGeoJSONToGPX } from '../utils/geoJsonConverter';
 import type { FeatureCollection, LineString } from 'geojson';
+import { TipsModal } from '../components/TipsModal';
 
-import { Map, AttributionControl } from 'react-map-gl/maplibre';
+import { Map } from 'react-map-gl/maplibre';
 import type { StyleSpecification } from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MaplibreTerradrawControl } from '@watergis/maplibre-gl-terradraw'
@@ -58,6 +60,7 @@ export const EditPage: React.FC = () => {
     zoom: 10
   });
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [tipsModalOpen, setTipsModalOpen] = useState(false);
 
   const handleBackToHome = () => {
     navigate('/');
@@ -80,7 +83,7 @@ export const EditPage: React.FC = () => {
 
   const handleTerradrawOnLoad = useCallback((e: MapLibreEvent) => {
     const draw = new MaplibreTerradrawControl({
-      modes: ['render', 'linestring', 'select', 'delete-selection'],
+      modes: ['linestring', 'select', 'delete-selection'],
       open: true,
     })
     e.target.addControl(draw, 'top-left')
@@ -128,9 +131,11 @@ export const EditPage: React.FC = () => {
           });
         }
 
-        const result = draw.getTerraDrawInstance().addFeatures(geoJson.features as any)
-        console.log({result})
-      } else {
+        const drawInstance = draw.getTerraDrawInstance()
+        const result = drawInstance.addFeatures(geoJson.features as any)
+        console.log(result) // エラーが戻り値から確認できる
+
+        } else {
         setError('編集するGeoJSONデータがありません。ホーム画面でファイルを読み込んでください。');
       }
     } catch (err) {
@@ -215,20 +220,28 @@ export const EditPage: React.FC = () => {
       <Box sx={{ mb: 2 }}>
         <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
           <Button
-            startIcon={<Tune />}
+            startIcon={<ArrowBack />}
             onClick={handleBackToThinning}
-            variant="outlined"
           >
-            間引き設定に戻る
+            間引き設定に戻る（リセット）
           </Button>
         </Box>
 
         <Typography variant="h4" component="h1" gutterBottom>
           GPX編集
         </Typography>
-        <Typography variant="body1" color="text.secondary">
+        <Typography variant="body1" color="text.secondary" sx={{ display: 'inline' }}>
           地図上でGPXトラックを編集できます。左上のツールを使って線を選択・編集・削除してください。
         </Typography>
+        <Link
+          component="button"
+          variant="body2"
+          onClick={() => setTipsModalOpen(true)}
+          sx={{ ml: 1, cursor: 'pointer' }}
+        >
+          <Lightbulb fontSize="small" />
+           ヒント
+        </Link>
       </Box>
 
       <Card sx={{ height: '70vh', position: 'relative', overflow: 'hidden' }}>
@@ -241,8 +254,6 @@ export const EditPage: React.FC = () => {
           onLoad={handleTerradrawOnLoad}
           onRemove={handleTerradrawOnRemove}
         >
-        <AttributionControl />
-
         </Map>
 
         {geoJsonData && geoJsonData.features.length > 0 && (
@@ -287,6 +298,19 @@ export const EditPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* ヒントモーダル */}
+      <TipsModal
+        open={tipsModalOpen}
+        onClose={() => setTipsModalOpen(false)}
+        title="編集のヒント"
+        tips={[
+          'トラックを選択して点を編集します。',
+          '中間点を選択すると点を追加可能です。',
+          '点をドラッグで移動し、トラックを変形可能です。',
+          '点を右クリックで削除することができます。'
+        ]}
+      />
     </Container>
   );
 };
