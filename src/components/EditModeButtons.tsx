@@ -9,7 +9,7 @@ import {
 } from '@mui/material';
 import { Edit, MergeType } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { saveGeoJSONData } from '../utils/gpxStorage';
+import { saveGeoJSONData, saveOriginalGeoJSONData } from '../utils/gpxStorage';
 import { convertGPXToGeoJSON, convertGPXToMergedGeoJSON, checkTimeRangeOverlaps } from '../utils/geoJsonConverter';
 import type { TimeOverlapResult } from '../utils/geoJsonConverter';
 import type { GPXFile } from '../types/gpx';
@@ -47,6 +47,7 @@ export const EditModeButtons: React.FC<EditModeButtonsProps> = ({
     if (gpxFiles) {
       const geoJsonData = convertGPXToGeoJSON(gpxFiles);
       saveGeoJSONData(geoJsonData);
+      saveOriginalGeoJSONData(geoJsonData); // 元データも保存
     }
     navigate('/edit');
   };
@@ -55,9 +56,11 @@ export const EditModeButtons: React.FC<EditModeButtonsProps> = ({
     if (gpxFiles) {
       const mergedGeoJsonData = convertGPXToMergedGeoJSON(gpxFiles);
       saveGeoJSONData(mergedGeoJsonData);
+      saveOriginalGeoJSONData(mergedGeoJsonData); // 元データも保存
     }
-    navigate('/edit');
+    navigate('/thinning');
   };
+
 
   const canMerge = !timeOverlapCheck?.hasOverlap && !loading;
 

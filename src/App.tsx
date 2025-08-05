@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { theme } from './theme';
 import { HomePage } from './pages/HomePage';
+import { ThinningPage } from './pages/ThinningPage';
 import { EditPage } from './pages/EditPage';
 import { BackgroundWrapper } from './components/BackgroundWrapper';
 
@@ -13,6 +14,7 @@ function App() {
         <Router>
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/thinning" element={<ThinningPage />} />
             <Route path="/edit" element={<EditPage />} />
           </Routes>
         </Router>

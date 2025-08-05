@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Container,
   Typography,
@@ -8,15 +8,18 @@ import {
   Button,
   Alert,
   Fab,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
-import { ArrowBack, Download } from '@mui/icons-material';
+import { ArrowBack, Download, Tune } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import type { ErrorEvent as MaplibreErrorEvent } from 'react-map-gl/maplibre';
 import { loadGeoJSONData } from '../utils/gpxStorage';
 import { convertGeoJSONToGPX } from '../utils/geoJsonConverter';
 import type { FeatureCollection, LineString } from 'geojson';
-import { ThinningControls, type ThinningOptions } from '../components/ThinningControls';
-import { thinBySequence, thinByTime, thinByDistance } from '../utils/trackThinning';
 
 import { Map, AttributionControl } from 'react-map-gl/maplibre';
 import type { StyleSpecification } from 'react-map-gl/maplibre'
@@ -47,7 +50,6 @@ const MAP_STYLE: StyleSpecification = {
 export const EditPage: React.FC = () => {
   const navigate = useNavigate();
 
-  const [originalGeoJsonData, setOriginalGeoJsonData] = useState<FeatureCollection<LineString, { fileName: string, timeStamps?: (string | null)[] }> | null>(null);
   const [geoJsonData, setGeoJsonData] = useState<FeatureCollection<LineString, { fileName: string, timeStamps?: (string | null)[] }> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewState, setViewState] = useState({
@@ -55,13 +57,23 @@ export const EditPage: React.FC = () => {
     latitude: 35.6812,
     zoom: 10
   });
-  const [thinningOptions, setThinningOptions] = useState<ThinningOptions>({
-    type: 'none',
-    value: null
-  });
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
   const handleBackToHome = () => {
     navigate('/');
+  };
+
+  const handleBackToThinning = () => {
+    setConfirmDialogOpen(true);
+  };
+
+  const handleConfirmBackToThinning = () => {
+    setConfirmDialogOpen(false);
+    navigate('/thinning');
+  };
+
+  const handleCancelBackToThinning = () => {
+    setConfirmDialogOpen(false);
   };
 
   const [draw, setDraw] = useState<MaplibreTerradrawControl | null>(null)
@@ -78,7 +90,6 @@ export const EditPage: React.FC = () => {
       const geoJson = loadGeoJSONData();
       if (geoJson && geoJson.features.length > 0) {
         const typedGeoJson = geoJson as FeatureCollection<LineString, { fileName: string, timeStamps?: (string | null)[] }>;
-        setOriginalGeoJsonData(typedGeoJson);
         setGeoJsonData(typedGeoJson);
 
         // Calculate bounds for initial view
@@ -155,75 +166,6 @@ export const EditPage: React.FC = () => {
     }
   }, [geoJsonData]);
 
-  // 間引き処理されたGeoJSONデータを計算
-  const processedGeoJsonData = useMemo(() => {
-    if (!originalGeoJsonData) return null;
-
-    const processedFeatures = originalGeoJsonData.features.map(feature => {
-      let coordinates = feature.geometry.coordinates as [number, number][];
-      let timeStamps = feature.properties.timeStamps || [];
-
-      // 間引き処理を適用
-      if (thinningOptions.type !== 'none' && thinningOptions.value !== null) {
-        let result;
-
-        switch (thinningOptions.type) {
-          case 'sequence':
-            result = thinBySequence(coordinates, timeStamps, thinningOptions.value);
-            break;
-          case 'time':
-            result = thinByTime(coordinates, timeStamps, thinningOptions.value);
-            break;
-          case 'distance':
-            result = thinByDistance(coordinates, timeStamps, thinningOptions.value);
-            break;
-          default:
-            result = { coordinates, timeStamps };
-        }
-
-        coordinates = result.coordinates;
-        timeStamps = result.timeStamps;
-      }
-
-      return {
-        ...feature,
-        geometry: {
-          ...feature.geometry,
-          coordinates
-        },
-        properties: {
-          ...feature.properties,
-          timeStamps
-        }
-      };
-    });
-
-    return {
-      ...originalGeoJsonData,
-      features: processedFeatures
-    };
-  }, [originalGeoJsonData, thinningOptions]);
-
-  // 地図データの更新
-  React.useEffect(() => {
-    if (processedGeoJsonData && draw) {
-      try {
-        // 既存のフィーチャーをクリア
-        const terraDrawInstance = draw.getTerraDrawInstance();
-        terraDrawInstance.clear();
-
-        // 新しいフィーチャーを追加
-        terraDrawInstance.addFeatures(processedGeoJsonData.features as any);
-        setGeoJsonData(processedGeoJsonData);
-      } catch (err) {
-        console.error('Failed to update map features:', err);
-      }
-    }
-  }, [processedGeoJsonData, draw]);
-
-  const handleThinningOptionsChange = useCallback((newOptions: ThinningOptions) => {
-    setThinningOptions(newOptions);
-  }, []);
 
   const handleMapError = useCallback((event: MaplibreErrorEvent) => {
     console.error('Map error:', event);
@@ -271,13 +213,21 @@ export const EditPage: React.FC = () => {
   return (
     <Container maxWidth="xl" sx={{ py: 2 }}>
       <Box sx={{ mb: 2 }}>
-        <Button
-          startIcon={<ArrowBack />}
-          onClick={handleBackToHome}
-          sx={{ mb: 1 }}
-        >
-          ホームに戻る
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+          <Button
+            startIcon={<ArrowBack />}
+            onClick={handleBackToHome}
+          >
+            ホームに戻る
+          </Button>
+          <Button
+            startIcon={<Tune />}
+            onClick={handleBackToThinning}
+            variant="outlined"
+          >
+            間引き設定に戻る
+          </Button>
+        </Box>
 
         <Typography variant="h4" component="h1" gutterBottom>
           GPX編集
@@ -318,20 +268,38 @@ export const EditPage: React.FC = () => {
       </Card>
 
       {geoJsonData && geoJsonData.features.length > 0 && (
-        <>
-          <ThinningControls
-            coordinates={geoJsonData.features.length > 0 ? geoJsonData.features[0].geometry.coordinates as [number, number][] : []}
-            timeStamps={geoJsonData.features.length > 0 ? geoJsonData.features[0].properties.timeStamps || [] : []}
-            options={thinningOptions}
-            onOptionsChange={handleThinningOptionsChange}
-          />
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="body2" color="text.secondary">
-              編集中のトラック数: {geoJsonData.features.length}
-            </Typography>
-          </Box>
-        </>
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            編集中のトラック数: {geoJsonData.features.length}
+          </Typography>
+        </Box>
       )}
+
+      {/* 確認ダイアログ */}
+      <Dialog
+        open={confirmDialogOpen}
+        onClose={handleCancelBackToThinning}
+        aria-labelledby="confirm-dialog-title"
+        aria-describedby="confirm-dialog-description"
+      >
+        <DialogTitle id="confirm-dialog-title">
+          間引き設定に戻りますか？
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="confirm-dialog-description">
+            編集内容が失われ、元のデータから間引き設定をやり直すことになります。
+            この操作は取り消せません。
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelBackToThinning}>
+            キャンセル
+          </Button>
+          <Button onClick={handleConfirmBackToThinning} color="primary" variant="contained">
+            間引き設定に戻る
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };
