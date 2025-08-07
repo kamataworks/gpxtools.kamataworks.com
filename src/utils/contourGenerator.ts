@@ -56,8 +56,8 @@ function generateContourLines(
   const stepY = height / resolution;
 
   for (const level of levels) {
-    for (let i = 0; i < resolution - 1; i++) {
-      for (let j = 0; j < resolution - 1; j++) {
+    for (let i = 0; i < resolution; i++) {
+      for (let j = 0; j < resolution; j++) {
         const x1 = i * stepX;
         const y1 = j * stepY;
         const x2 = (i + 1) * stepX;
