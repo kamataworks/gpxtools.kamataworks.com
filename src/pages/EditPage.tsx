@@ -7,7 +7,6 @@ import {
   CardContent,
   Button,
   Alert,
-  Fab,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -132,7 +131,7 @@ export const EditPage: React.FC = () => {
         }
 
         const drawInstance = draw.getTerraDrawInstance()
-        const result = drawInstance.addFeatures(geoJson.features as any)
+        const result = drawInstance.addFeatures(geoJson.features as unknown[])
         console.log(result) // エラーが戻り値から確認できる
 
         } else {
@@ -152,10 +151,38 @@ export const EditPage: React.FC = () => {
   }, [draw])
 
   const handleDownload = useCallback(() => {
-    if (!geoJsonData) return;
+    if (!draw || !geoJsonData) return;
 
     try {
-      const gpxContent = convertGeoJSONToGPX(geoJsonData);
+      // Get the current edited features from Terradraw
+      const drawInstance = draw.getTerraDrawInstance();
+      // TODO: Point の配列が返ってくることがある。
+      const currentFeatures = drawInstance.getSnapshot();
+
+      console.log('Current features:', currentFeatures);
+
+      // Create updated GeoJSON with edited features
+      const editedGeoJson: FeatureCollection<LineString, { fileName: string, timeStamps?: (string | null)[] }> = {
+        type: 'FeatureCollection',
+        features: currentFeatures.map((feature: unknown) => {
+          const geoFeature = feature as { geometry: { type: string; coordinates: number[][] } };
+          // Find the original feature to preserve metadata
+          const originalFeature = geoJsonData.features.find(f =>
+            f.geometry.coordinates.length === geoFeature.geometry.coordinates.length
+          ) || geoJsonData.features[0];
+
+          return {
+            type: 'Feature',
+            geometry: geoFeature.geometry,
+            properties: {
+              fileName: originalFeature.properties.fileName,
+              timeStamps: originalFeature.properties.timeStamps
+            }
+          };
+        })
+      };
+
+      const gpxContent = convertGeoJSONToGPX(editedGeoJson);
       const blob = new Blob([gpxContent], { type: 'application/gpx+xml' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -169,7 +196,7 @@ export const EditPage: React.FC = () => {
       console.error('Download error:', err);
       setError('ファイルのダウンロードに失敗しました');
     }
-  }, [geoJsonData]);
+  }, [draw, geoJsonData]);
 
 
   const handleMapError = useCallback((event: MaplibreErrorEvent) => {
@@ -244,7 +271,7 @@ export const EditPage: React.FC = () => {
         </Link>
       </Box>
 
-      <Card sx={{ height: '70vh', position: 'relative', overflow: 'hidden' }}>
+      <Card sx={{ height: 'calc(100vh - 220px)', position: 'relative', overflow: 'hidden', mb: 2 }}>
         <Map
           {...viewState}
           onMove={evt => setViewState(evt.viewState)}
@@ -255,22 +282,22 @@ export const EditPage: React.FC = () => {
           onRemove={handleTerradrawOnRemove}
         >
         </Map>
-
-        {geoJsonData && geoJsonData.features.length > 0 && (
-          <Fab
-            color="primary"
-            aria-label="download"
-            onClick={handleDownload}
-            sx={{
-              position: 'absolute',
-              bottom: 16,
-              right: 16,
-            }}
-          >
-            <Download />
-          </Fab>
-        )}
       </Card>
+
+      {geoJsonData && geoJsonData.features.length > 0 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<Download />}
+            onClick={handleDownload}
+            size="large"
+            sx={{ px: 4, py: 1.5 }}
+          >
+            編集後のGPXをダウンロード
+          </Button>
+        </Box>
+      )}
 
 
       {/* 確認ダイアログ */}

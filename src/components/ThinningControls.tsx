@@ -28,10 +28,10 @@ const SEQUENCE_OPTIONS = [
 ];
 
 const TIME_OPTIONS = [
+  { value: 1, label: '1分間隔' },
+  { value: 2, label: '2分間隔' },
   { value: 5, label: '5分間隔' },
   { value: 10, label: '10分間隔' },
-  { value: 30, label: '30分間隔' },
-  { value: 60, label: '1時間間隔' },
 ];
 
 const DISTANCE_OPTIONS = [
