@@ -22,6 +22,75 @@ import { convertGeoJSONToGPX } from '../utils/geoJsonConverter';
 import type { FeatureCollection, LineString } from 'geojson';
 import { TipsModal } from '../components/TipsModal';
 
+// Helper functions for coordinate distance calculation and time interpolation
+const calculateDistance = (coord1: [number, number], coord2: [number, number]): number => {
+  const [lon1, lat1] = coord1;
+  const [lon2, lat2] = coord2;
+  const dLon = lon2 - lon1;
+  const dLat = lat2 - lat1;
+  return Math.sqrt(dLon * dLon + dLat * dLat);
+};
+
+const findClosestCoordinateIndex = (targetCoord: [number, number], coordinates: [number, number][]): number => {
+  let minDistance = Infinity;
+  let closestIndex = 0;
+
+  coordinates.forEach((coord, index) => {
+    const distance = calculateDistance(targetCoord, coord);
+    if (distance < minDistance) {
+      minDistance = distance;
+      closestIndex = index;
+    }
+  });
+
+  return closestIndex;
+};
+
+const interpolateTimeStamps = (
+  editedCoords: [number, number][],
+  originalCoords: [number, number][],
+  originalTimeStamps: (string | null)[]
+): (string | null)[] => {
+  return editedCoords.map((editedCoord, editedIndex) => {
+    const closestIndex = findClosestCoordinateIndex(editedCoord, originalCoords);
+    const distance = calculateDistance(editedCoord, originalCoords[closestIndex]);
+
+    // 非常に近い場合（移動していない点）は元の時間をそのまま使用
+    if (distance < 0.00001) { // 約1m以内
+      return originalTimeStamps[closestIndex];
+    }
+
+    // 追加された点の場合は前後の点から内挿
+    if (editedIndex > 0 && editedIndex < editedCoords.length - 1) {
+      const prevCoord = editedCoords[editedIndex - 1];
+      const nextCoord = editedCoords[editedIndex + 1];
+
+      const prevIndex = findClosestCoordinateIndex(prevCoord, originalCoords);
+      const nextIndex = findClosestCoordinateIndex(nextCoord, originalCoords);
+
+      const prevTime = originalTimeStamps[prevIndex];
+      const nextTime = originalTimeStamps[nextIndex];
+
+      if (prevTime && nextTime && prevIndex !== nextIndex) {
+        // 線形内挿で時間を計算
+        const prevDate = new Date(prevTime);
+        const nextDate = new Date(nextTime);
+        const totalDistance = calculateDistance(prevCoord, nextCoord);
+        const partialDistance = calculateDistance(prevCoord, editedCoord);
+        const ratio = totalDistance > 0 ? partialDistance / totalDistance : 0.5;
+
+        const interpolatedTime = new Date(
+          prevDate.getTime() + (nextDate.getTime() - prevDate.getTime()) * ratio
+        );
+        return interpolatedTime.toISOString();
+      }
+    }
+
+    // 内挿できない場合は最も近い点の時間を使用
+    return originalTimeStamps[closestIndex];
+  });
+};
+
 import { Map } from 'react-map-gl/maplibre';
 import type { StyleSpecification } from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -51,7 +120,7 @@ const MAP_STYLE: StyleSpecification = {
 export const EditPage: React.FC = () => {
   const navigate = useNavigate();
 
-  const [geoJsonData, setGeoJsonData] = useState<FeatureCollection<LineString, { fileName: string, timeStamps?: (string | null)[] }> | null>(null);
+  const [geoJsonData, setGeoJsonData] = useState<FeatureCollection<LineString, { fileName: string, timeStamps?: (string | null)[], fileIndex?: number, trackIndex?: number, segmentIndex?: number }> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewState, setViewState] = useState({
     longitude: 139.7671,
@@ -150,46 +219,93 @@ export const EditPage: React.FC = () => {
     }
   }, [draw])
 
-  const handleDownload = useCallback(() => {
-    if (!draw || !geoJsonData) return;
+  const createEditedGeoJSON = useCallback((includeTime: boolean): FeatureCollection<LineString, { fileName: string, timeStamps?: (string | null)[] }> => {
+    if (!draw || !geoJsonData) {
+      throw new Error('Draw instance or GeoJSON data not available');
+    }
 
-    try {
-      // Get the current edited features from Terradraw
-      const drawInstance = draw.getTerraDrawInstance();
-      const currentFeatures = drawInstance.getSnapshot();
+    // Get the current edited features from Terradraw
+    const drawInstance = draw.getTerraDrawInstance();
+    const currentFeatures = drawInstance.getSnapshot();
 
-      console.log('Current features:', currentFeatures);
-
-      // Create updated GeoJSON with edited features
-      const editedGeoJson: FeatureCollection<LineString, { fileName: string, timeStamps?: (string | null)[] }> = {
-        type: 'FeatureCollection',
-        features: currentFeatures
-          // 編集した点データも入っているようなので、フィルタ
-          .filter(f => f.geometry.type === 'LineString')
-          .map((feature: unknown) => {
-            const geoFeature = feature as { geometry: { type: string; coordinates: number[][] } };
-            // Find the original feature to preserve metadata
-            const originalFeature = geoJsonData.features.find(f =>
-              f.geometry.coordinates.length === geoFeature.geometry.coordinates.length
-            ) || geoJsonData.features[0];
-
-            return {
-              type: 'Feature',
-              geometry: geoFeature.geometry,
-              properties: {
-                fileName: originalFeature.properties.fileName,
-                timeStamps: originalFeature.properties.timeStamps
-              }
-            };
-          })
+    // Define the expected structure of Terradraw features
+    interface TerradrawFeature {
+      geometry: {
+        type: string;
+        coordinates: [number, number][];
       };
+      properties?: {
+        fileIndex?: number;
+        trackIndex?: number;
+        segmentIndex?: number;
+      };
+    }
 
-      const gpxContent = convertGeoJSONToGPX(editedGeoJson);
+    // Create updated GeoJSON with edited features
+    const editedGeoJson: FeatureCollection<LineString, { fileName: string, timeStamps?: (string | null)[] }> = {
+      type: 'FeatureCollection',
+      features: (currentFeatures as unknown as TerradrawFeature[])
+        // 編集した点データも入っているようなので、フィルタ
+        .filter((f) => f.geometry.type === 'LineString')
+        .map((feature, index: number) => {
+          // Find the original feature to preserve metadata
+          // First try to match by properties, then fall back to index-based matching
+          let originalFeature = geoJsonData.features.find(f =>
+            f.properties.fileIndex === feature.properties?.fileIndex &&
+            f.properties.trackIndex === feature.properties?.trackIndex &&
+            f.properties.segmentIndex === feature.properties?.segmentIndex
+          );
+
+          // Fallback: use index-based matching if properties don't match
+          if (!originalFeature && index < geoJsonData.features.length) {
+            originalFeature = geoJsonData.features[index];
+          }
+
+          // Final fallback: use first feature
+          if (!originalFeature) {
+            originalFeature = geoJsonData.features[0];
+          }
+
+          let adjustedTimeStamps: (string | null)[] | undefined = undefined;
+
+          if (includeTime && originalFeature.properties.timeStamps) {
+            const originalCoords = originalFeature.geometry.coordinates as [number, number][];
+            const editedCoords = feature.geometry.coordinates as [number, number][];
+
+            // 時間情報を内挿して復元
+            adjustedTimeStamps = interpolateTimeStamps(
+              editedCoords,
+              originalCoords,
+              originalFeature.properties.timeStamps
+            );
+          }
+
+          return {
+            type: 'Feature' as const,
+            geometry: {
+              type: 'LineString' as const,
+              coordinates: feature.geometry.coordinates
+            },
+            properties: {
+              fileName: originalFeature.properties.fileName,
+              timeStamps: adjustedTimeStamps
+            }
+          };
+        })
+    };
+
+    return editedGeoJson;
+  }, [draw, geoJsonData]);
+
+  const handleDownloadWithTime = useCallback(() => {
+    try {
+      const editedGeoJson = createEditedGeoJSON(true);
+      const gpxContent = convertGeoJSONToGPX(editedGeoJson, true);
       const blob = new Blob([gpxContent], { type: 'application/gpx+xml' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'edited-tracks.gpx';
+      a.download = 'edited-tracks-with-time.gpx';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -198,7 +314,26 @@ export const EditPage: React.FC = () => {
       console.error('Download error:', err);
       setError('ファイルのダウンロードに失敗しました');
     }
-  }, [draw, geoJsonData]);
+  }, [createEditedGeoJSON]);
+
+  const handleDownloadWithoutTime = useCallback(() => {
+    try {
+      const editedGeoJson = createEditedGeoJSON(false);
+      const gpxContent = convertGeoJSONToGPX(editedGeoJson, false);
+      const blob = new Blob([gpxContent], { type: 'application/gpx+xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'edited-tracks-no-time.gpx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download error:', err);
+      setError('ファイルのダウンロードに失敗しました');
+    }
+  }, [createEditedGeoJSON]);
 
 
   const handleMapError = useCallback((event: MaplibreErrorEvent) => {
@@ -308,17 +443,28 @@ export const EditPage: React.FC = () => {
           flexShrink: 0,
           display: 'flex',
           justifyContent: 'center',
+          gap: 2,
           py: 1
         }}>
           <Button
             variant="contained"
             color="primary"
             startIcon={<Download />}
-            onClick={handleDownload}
+            onClick={handleDownloadWithTime}
             size="large"
-            sx={{ px: 4, py: 1.5 }}
+            sx={{ px: 3, py: 1.5 }}
           >
-            編集後のGPXをダウンロード
+            編集後のGPXをダウンロード（時間情報付き）
+          </Button>
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={<Download />}
+            onClick={handleDownloadWithoutTime}
+            size="large"
+            sx={{ px: 3, py: 1.5 }}
+          >
+            編集後のGPXをダウンロード（時間情報なし）
           </Button>
         </Box>
       )}

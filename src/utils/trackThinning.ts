@@ -4,6 +4,9 @@ export interface TrackStats {
   totalPoints: number;
   totalDistance: number; // km
   averageTimeInterval: number | null; // milliseconds
+  startTime: Date | null; // 開始時刻
+  endTime: Date | null; // 終了時刻
+  duration: number | null; // 総時間（ミリ秒）
 }
 
 export interface ThinningResult {
@@ -149,15 +152,29 @@ export const calculateTrackStats = (
     .filter(date => !isNaN(date.getTime()));
 
   let averageTimeInterval: number | null = null;
+  let startTime: Date | null = null;
+  let endTime: Date | null = null;
+  let duration: number | null = null;
+
   if (validTimes.length > 1) {
-    const totalTimeMs = validTimes[validTimes.length - 1].getTime() - validTimes[0].getTime();
+    startTime = validTimes[0];
+    endTime = validTimes[validTimes.length - 1];
+    const totalTimeMs = endTime.getTime() - startTime.getTime();
+    duration = totalTimeMs;
     averageTimeInterval = totalTimeMs / (validTimes.length - 1);
+  } else if (validTimes.length === 1) {
+    startTime = validTimes[0];
+    endTime = validTimes[0];
+    duration = 0;
   }
 
   return {
     totalPoints,
     totalDistance,
-    averageTimeInterval
+    averageTimeInterval,
+    startTime,
+    endTime,
+    duration
   };
 };
 
@@ -188,5 +205,70 @@ export const formatDistance = (distanceKm: number): string => {
     return `${Math.round(distanceKm * 1000)}m`;
   } else {
     return `${distanceKm.toFixed(1)}km`;
+  }
+};
+
+/**
+ * 日時を人間が読みやすい形式に変換
+ */
+export const formatDateTime = (date: Date | null): string => {
+  if (date === null) return '不明';
+
+  return date.toLocaleString('ja-JP', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+/**
+ * 時間範囲を人間が読みやすい形式に変換
+ */
+export const formatTimeRange = (startTime: Date | null, endTime: Date | null): string => {
+  if (startTime === null || endTime === null) return '不明';
+
+  const start = formatDateTime(startTime);
+  const end = formatDateTime(endTime);
+
+  // 同じ日の場合は日付を省略
+  if (startTime.toDateString() === endTime.toDateString()) {
+    const startTimeOnly = startTime.toLocaleTimeString('ja-JP', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    const endTimeOnly = endTime.toLocaleTimeString('ja-JP', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    const dateOnly = startTime.toLocaleDateString('ja-JP', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    return `${dateOnly} ${startTimeOnly} - ${endTimeOnly}`;
+  }
+
+  return `${start} - ${end}`;
+};
+
+/**
+ * 継続時間を人間が読みやすい形式に変換
+ */
+export const formatDuration = (durationMs: number | null): string => {
+  if (durationMs === null) return '不明';
+
+  const totalSeconds = Math.floor(durationMs / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}時間${minutes}分`;
+  } else if (minutes > 0) {
+    return `${minutes}分${seconds}秒`;
+  } else {
+    return `${seconds}秒`;
   }
 };

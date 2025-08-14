@@ -285,7 +285,7 @@ export const ThinningControls: React.FC<ThinningControlsProps> = ({
               時間的間引き
             </Typography>
             <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
-              指定した時間間隔でポイントを選択します。GPXファイルに時間情報が必要です。
+              指定した時間間隔でポイントを選択します。処理が正しく行われるためにはGPXファイルに時間情報が必要です。
             </Typography>
             <FormControl component="fieldset" fullWidth>
               <RadioGroup

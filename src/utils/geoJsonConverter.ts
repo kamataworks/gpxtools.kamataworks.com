@@ -13,8 +13,8 @@ export interface TimeOverlapResult {
   }>;
 }
 
-export const convertGPXToGeoJSON = (gpxFiles: GPXFile[]): FeatureCollection<LineString, { fileName: string, mode: 'linestring' }> => {
-  const features: Feature<LineString, { fileName: string, mode: 'linestring', trackName: string, fileIndex: number, trackIndex: number, segmentIndex: number, timeStamps: (string | null)[] }>[] = [];
+export const convertGPXToGeoJSON = (gpxFiles: GPXFile[]): FeatureCollection<LineString, { fileName: string, mode: 'linestring', trackName: string, fileIndex: number, trackIndex: number, segmentIndex: number, timeStamps: (string | null)[], pointIds: string[] }> => {
+  const features: Feature<LineString, { fileName: string, mode: 'linestring', trackName: string, fileIndex: number, trackIndex: number, segmentIndex: number, timeStamps: (string | null)[], pointIds: string[] }>[] = [];
 
   gpxFiles.forEach((file, fileIndex) => {
     file.tracks.forEach((track, trackIndex) => {
@@ -27,6 +27,11 @@ export const convertGPXToGeoJSON = (gpxFiles: GPXFile[]): FeatureCollection<Line
 
           const timeStamps: (string | null)[] = segment.points.map(point =>
             point.time ? point.time.toISOString() : null
+          );
+
+          // 各点に一意のIDを付与
+          const pointIds: string[] = segment.points.map((_, pointIndex) =>
+            `${fileIndex}-${trackIndex}-${segmentIndex}-${pointIndex}`
           );
 
           features.push({
@@ -42,7 +47,8 @@ export const convertGPXToGeoJSON = (gpxFiles: GPXFile[]): FeatureCollection<Line
               fileIndex,
               trackIndex,
               segmentIndex,
-              timeStamps
+              timeStamps,
+              pointIds
             }
           });
         }
@@ -56,7 +62,7 @@ export const convertGPXToGeoJSON = (gpxFiles: GPXFile[]): FeatureCollection<Line
   };
 };
 
-export const convertGeoJSONToGPX = (geoJson: FeatureCollection<LineString, { fileName: string, timeStamps?: (string | null)[] }>): string => {
+export const convertGeoJSONToGPX = (geoJson: FeatureCollection<LineString, { fileName: string, timeStamps?: (string | null)[] }>, includeTime: boolean = true): string => {
   const gpxHeader = `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="GPX Tools" xmlns="http://www.topografix.com/GPX/1/1">
   <metadata>
@@ -94,7 +100,7 @@ export const convertGeoJSONToGPX = (geoJson: FeatureCollection<LineString, { fil
         tracks += `
       <trkpt lat="${lat}" lon="${lon}">`;
 
-        if (timeStamp) {
+        if (includeTime && timeStamp) {
           tracks += `
         <time>${timeStamp}</time>`;
         }

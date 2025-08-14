@@ -29,7 +29,7 @@ export interface StoredGPXData {
 }
 
 export interface StoredGeoJSONData {
-  data: FeatureCollection<LineString>;
+  data: FeatureCollection<LineString, any>;
   lastModified: number;
 }
 
@@ -57,7 +57,7 @@ export const clearGPXData = (): void => {
   localStorage.removeItem(GPX_STORAGE_KEY);
 };
 
-export const saveGeoJSONData = (geoJson: FeatureCollection<LineString>): void => {
+export const saveGeoJSONData = (geoJson: FeatureCollection<LineString, any>): void => {
   const data: StoredGeoJSONData = {
     data: geoJson,
     lastModified: Date.now()
@@ -65,7 +65,7 @@ export const saveGeoJSONData = (geoJson: FeatureCollection<LineString>): void =>
   localStorage.setItem(GEOJSON_STORAGE_KEY, JSON.stringify(data));
 };
 
-export const loadGeoJSONData = (): FeatureCollection<LineString> | null => {
+export const loadGeoJSONData = (): FeatureCollection<LineString, any> | null => {
   const stored = localStorage.getItem(GEOJSON_STORAGE_KEY);
   if (!stored) return null;
 
