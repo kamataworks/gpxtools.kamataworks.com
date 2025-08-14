@@ -245,8 +245,17 @@ export const EditPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 2 }}>
-      <Box sx={{ mb: 2 }}>
+    <Container
+      maxWidth="xl"
+      sx={{
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        py: 1
+      }}
+    >
+      {/* ヘッダーセクション - 固定サイズ */}
+      <Box sx={{ flexShrink: 0, mb: 2 }}>
         <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
           <Button
             startIcon={<ArrowBack />}
@@ -273,7 +282,14 @@ export const EditPage: React.FC = () => {
         </Link>
       </Box>
 
-      <Card sx={{ height: 'calc(100vh - 220px)', position: 'relative', overflow: 'hidden', mb: 2 }}>
+      {/* マップセクション - 残りの空間を使用 */}
+      <Card sx={{
+        flex: 1,
+        minHeight: 0,
+        position: 'relative',
+        overflow: 'hidden',
+        mb: 1
+      }}>
         <Map
           {...viewState}
           onMove={evt => setViewState(evt.viewState)}
@@ -286,8 +302,14 @@ export const EditPage: React.FC = () => {
         </Map>
       </Card>
 
+      {/* フッターセクション - 固定サイズ */}
       {geoJsonData && geoJsonData.features.length > 0 && (
-        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+        <Box sx={{
+          flexShrink: 0,
+          display: 'flex',
+          justifyContent: 'center',
+          py: 1
+        }}>
           <Button
             variant="contained"
             color="primary"
@@ -309,16 +331,16 @@ export const EditPage: React.FC = () => {
         aria-labelledby="confirm-dialog-title"
         aria-describedby="confirm-dialog-description"
       >
-        <DialogTitle id="confirm-dialog-title">
+        <DialogTitle id="confirm-dialog-title" sx={{ padding: '24px 24px 16px' }}>
           間引き設定に戻りますか？
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ padding: '0 24px 16px' }}>
           <DialogContentText id="confirm-dialog-description">
             編集内容が失われ、元のデータから間引き設定をやり直すことになります。
             この操作は取り消せません。
           </DialogContentText>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ padding: '16px 24px 24px' }}>
           <Button onClick={handleCancelBackToThinning}>
             キャンセル
           </Button>
