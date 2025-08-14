@@ -11,9 +11,9 @@ import {
 } from '@mui/material';
 import { ArrowBack, Edit, Lightbulb } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { loadOriginalGeoJSONData, saveGeoJSONData } from '../utils/gpxStorage';
+import { loadOriginalGeoJSONData, saveGeoJSONData, loadThinningOptions, saveThinningOptions, type ThinningOptions, type CustomInputs } from '../utils/gpxStorage';
 import type { FeatureCollection, LineString } from 'geojson';
-import { ThinningControls, type ThinningOptions } from '../components/ThinningControls';
+import { ThinningControls } from '../components/ThinningControls';
 import { ThinningStats } from '../components/ThinningStats';
 import { thinBySequence, thinByTime, thinByDistance } from '../utils/trackThinning';
 import { ThinningMap } from '../components/ThinningMap';
@@ -27,6 +27,11 @@ export const ThinningPage: React.FC = () => {
   const [thinningOptions, setThinningOptions] = useState<ThinningOptions>({
     type: 'none',
     value: null
+  });
+  const [customInputs, setCustomInputs] = useState<CustomInputs>({
+    sequence: '',
+    time: '',
+    distance: ''
   });
   const [tipsModalOpen, setTipsModalOpen] = useState(false);
 
@@ -93,7 +98,15 @@ export const ThinningPage: React.FC = () => {
 
   const handleThinningOptionsChange = useCallback((newOptions: ThinningOptions) => {
     setThinningOptions(newOptions);
-  }, []);
+    // ローカルストレージに保存
+    saveThinningOptions(newOptions, customInputs);
+  }, [customInputs]);
+
+  const handleCustomInputsChange = useCallback((newCustomInputs: CustomInputs) => {
+    setCustomInputs(newCustomInputs);
+    // ローカルストレージに保存
+    saveThinningOptions(thinningOptions, newCustomInputs);
+  }, [thinningOptions]);
 
   // データの読み込み
   React.useEffect(() => {
@@ -104,6 +117,13 @@ export const ThinningPage: React.FC = () => {
         setOriginalGeoJsonData(typedGeoJson);
       } else {
         setError('間引きするGeoJSONデータがありません。ホーム画面でファイルを読み込んでください。');
+      }
+
+      // 保存された間引き設定を読み込み
+      const savedThinningData = loadThinningOptions();
+      if (savedThinningData) {
+        setThinningOptions(savedThinningData.options);
+        setCustomInputs(savedThinningData.customInputs);
       }
     } catch (err) {
       console.error('Failed to load GeoJSON data:', err);
@@ -213,7 +233,9 @@ export const ThinningPage: React.FC = () => {
             {originalGeoJsonData && originalGeoJsonData.features.length > 0 && (
               <ThinningControls
                 options={thinningOptions}
+                customInputs={customInputs}
                 onOptionsChange={handleThinningOptionsChange}
+                onCustomInputsChange={handleCustomInputsChange}
               />
             )}
           </Box>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Box,
   FormControl,
@@ -9,15 +9,13 @@ import {
   Paper,
   TextField
 } from '@mui/material';
-
-export interface ThinningOptions {
-  type: 'none' | 'sequence' | 'time' | 'distance';
-  value: number | null;
-}
+import type { ThinningOptions, CustomInputs } from '../utils/gpxStorage';
 
 interface ThinningControlsProps {
   options: ThinningOptions;
+  customInputs: CustomInputs;
   onOptionsChange: (options: ThinningOptions) => void;
+  onCustomInputsChange: (customInputs: CustomInputs) => void;
 }
 
 const SEQUENCE_OPTIONS = [
@@ -110,13 +108,10 @@ const parseDistanceInput = (input: string): number | null => {
 
 export const ThinningControls: React.FC<ThinningControlsProps> = ({
   options,
-  onOptionsChange
+  customInputs,
+  onOptionsChange,
+  onCustomInputsChange
 }) => {
-  const [customInputs, setCustomInputs] = useState({
-    sequence: '',
-    time: '',
-    distance: ''
-  });
 
   const handleRadioChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
@@ -159,7 +154,9 @@ export const ThinningControls: React.FC<ThinningControlsProps> = ({
   };
 
   const handleCustomInputChange = (type: 'sequence' | 'time' | 'distance', value: string) => {
-    setCustomInputs(prev => ({ ...prev, [type]: value }));
+    // カスタム入力値を更新
+    const newCustomInputs = { ...customInputs, [type]: value };
+    onCustomInputsChange(newCustomInputs);
 
     let parsedValue: number | null = null;
 
