@@ -156,7 +156,6 @@ export const EditPage: React.FC = () => {
     try {
       // Get the current edited features from Terradraw
       const drawInstance = draw.getTerraDrawInstance();
-      // TODO: Point の配列が返ってくることがある。
       const currentFeatures = drawInstance.getSnapshot();
 
       console.log('Current features:', currentFeatures);
@@ -164,22 +163,25 @@ export const EditPage: React.FC = () => {
       // Create updated GeoJSON with edited features
       const editedGeoJson: FeatureCollection<LineString, { fileName: string, timeStamps?: (string | null)[] }> = {
         type: 'FeatureCollection',
-        features: currentFeatures.map((feature: unknown) => {
-          const geoFeature = feature as { geometry: { type: string; coordinates: number[][] } };
-          // Find the original feature to preserve metadata
-          const originalFeature = geoJsonData.features.find(f =>
-            f.geometry.coordinates.length === geoFeature.geometry.coordinates.length
-          ) || geoJsonData.features[0];
+        features: currentFeatures
+          // 編集した点データも入っているようなので、フィルタ
+          .filter(f => f.geometry.type === 'LineString')
+          .map((feature: unknown) => {
+            const geoFeature = feature as { geometry: { type: string; coordinates: number[][] } };
+            // Find the original feature to preserve metadata
+            const originalFeature = geoJsonData.features.find(f =>
+              f.geometry.coordinates.length === geoFeature.geometry.coordinates.length
+            ) || geoJsonData.features[0];
 
-          return {
-            type: 'Feature',
-            geometry: geoFeature.geometry,
-            properties: {
-              fileName: originalFeature.properties.fileName,
-              timeStamps: originalFeature.properties.timeStamps
-            }
-          };
-        })
+            return {
+              type: 'Feature',
+              geometry: geoFeature.geometry,
+              properties: {
+                fileName: originalFeature.properties.fileName,
+                timeStamps: originalFeature.properties.timeStamps
+              }
+            };
+          })
       };
 
       const gpxContent = convertGeoJSONToGPX(editedGeoJson);
