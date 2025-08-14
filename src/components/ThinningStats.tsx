@@ -12,47 +12,74 @@ import {
 } from '../utils/trackThinning';
 
 interface ThinningStatsProps {
-  coordinates: [number, number][];
-  timeStamps: (string | null)[];
-  processedPointCount?: number;
+  originalCoordinates: [number, number][];
+  originalTimeStamps: (string | null)[];
+  processedCoordinates?: [number, number][];
+  processedTimeStamps?: (string | null)[];
 }
 
 export const ThinningStats: React.FC<ThinningStatsProps> = ({
-  coordinates,
-  timeStamps,
-  processedPointCount
+  originalCoordinates,
+  originalTimeStamps,
+  processedCoordinates,
+  processedTimeStamps
 }) => {
-  const stats: TrackStats = calculateTrackStats(coordinates, timeStamps);
+  const originalStats: TrackStats = calculateTrackStats(originalCoordinates, originalTimeStamps);
+  const processedStats: TrackStats | null = processedCoordinates && processedTimeStamps
+    ? calculateTrackStats(processedCoordinates, processedTimeStamps)
+    : null;
 
   return (
-    <Paper sx={{ p: 2, backgroundColor: 'grey.50' }}>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-        📊 現在の状態
-      </Typography>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-        <Box sx={{ flex: '1 1 200px' }}>
-          <Typography variant="body2">
-            <strong>元データ:</strong> {stats.totalPoints.toLocaleString()}点
-          </Typography>
-        </Box>
-        {processedPointCount !== undefined && (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {/* 元データセクション */}
+      <Paper sx={{ p: 2, backgroundColor: 'grey.50' }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          📊 元データ
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
           <Box sx={{ flex: '1 1 200px' }}>
             <Typography variant="body2">
-              <strong>間引き後:</strong> {processedPointCount.toLocaleString()}点
+              <strong>点数:</strong> {originalStats.totalPoints.toLocaleString()}点
             </Typography>
           </Box>
-        )}
-        <Box sx={{ flex: '1 1 200px' }}>
-          <Typography variant="body2">
-            <strong>平均時間間隔:</strong> {formatTimeInterval(stats.averageTimeInterval)}
-          </Typography>
+          <Box sx={{ flex: '1 1 200px' }}>
+            <Typography variant="body2">
+              <strong>平均時間間隔:</strong> {formatTimeInterval(originalStats.averageTimeInterval)}
+            </Typography>
+          </Box>
+          <Box sx={{ flex: '1 1 200px' }}>
+            <Typography variant="body2">
+              <strong>総距離:</strong> {formatDistance(originalStats.totalDistance)}
+            </Typography>
+          </Box>
         </Box>
-        <Box sx={{ flex: '1 1 200px' }}>
-          <Typography variant="body2">
-            <strong>総距離:</strong> {formatDistance(stats.totalDistance)}
+      </Paper>
+
+      {/* 間引き後データセクション */}
+      {processedStats && (
+        <Paper sx={{ p: 2, backgroundColor: 'primary.50', border: '1px solid', borderColor: 'primary.200' }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            ⚡ 間引き後データ
           </Typography>
-        </Box>
-      </Box>
-    </Paper>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ flex: '1 1 200px' }}>
+              <Typography variant="body2">
+                <strong>点数:</strong> {processedStats.totalPoints.toLocaleString()}点
+              </Typography>
+            </Box>
+            <Box sx={{ flex: '1 1 200px' }}>
+              <Typography variant="body2">
+                <strong>平均時間間隔:</strong> {formatTimeInterval(processedStats.averageTimeInterval)}
+              </Typography>
+            </Box>
+            <Box sx={{ flex: '1 1 200px' }}>
+              <Typography variant="body2">
+                <strong>総距離:</strong> {formatDistance(processedStats.totalDistance)}
+              </Typography>
+            </Box>
+          </Box>
+        </Paper>
+      )}
+    </Box>
   );
 };

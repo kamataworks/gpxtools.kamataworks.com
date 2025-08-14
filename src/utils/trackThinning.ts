@@ -12,7 +12,7 @@ export interface ThinningResult {
 }
 
 /**
- * 順番間引き - 素数間隔で点を間引く
+ * 順番間引き - 指定した間隔でポイントを選択します。1/4なら4つに1つのポイントを残します。
  */
 export const thinBySequence = (
   coordinates: [number, number][],
@@ -42,7 +42,7 @@ export const thinBySequence = (
 };
 
 /**
- * 時間的間引き - 指定した時間間隔で点を間引く
+ * 時間的間引き - 指定した時間間隔でポイントを選択します。GPXファイルに時間情報が必要です。
  */
 export const thinByTime = (
   coordinates: [number, number][],
@@ -85,7 +85,7 @@ export const thinByTime = (
 };
 
 /**
- * 空間的間引き - 指定した距離間隔で点を間引く
+ * 空間的間引き - 指定した距離間隔でポイントを選択します。直線距離で計算されます。
  */
 export const thinByDistance = (
   coordinates: [number, number][],

@@ -196,9 +196,10 @@ export const ThinningPage: React.FC = () => {
           {originalGeoJsonData && originalGeoJsonData.features.length > 0 && (
             <Box sx={{ mb: 2 }}>
               <ThinningStats
-                coordinates={originalGeoJsonData.features[0].geometry.coordinates as [number, number][]}
-                timeStamps={originalGeoJsonData.features[0].properties.timeStamps || []}
-                processedPointCount={processedGeoJsonData?.features[0]?.geometry.coordinates.length}
+                originalCoordinates={originalGeoJsonData.features[0].geometry.coordinates as [number, number][]}
+                originalTimeStamps={originalGeoJsonData.features[0].properties.timeStamps || []}
+                processedCoordinates={processedGeoJsonData?.features[0]?.geometry.coordinates as [number, number][]}
+                processedTimeStamps={processedGeoJsonData?.features[0]?.properties.timeStamps || []}
               />
             </Box>
           )}
@@ -266,7 +267,7 @@ export const ThinningPage: React.FC = () => {
         onClose={() => setTipsModalOpen(false)}
         title="間引き設定のヒント"
         tips={[
-          'データの間引きを行うことで、編集が容易になり、ファイルサイズを最適化できます。',
+          'データの間引きを行うことで、編集が容易になりファイルサイズを最適化できます。',
           'コンピューターの性能によりますが、目安として200点程度に調整することをお勧めします。'
         ]}
       />

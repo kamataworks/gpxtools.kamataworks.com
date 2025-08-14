@@ -102,7 +102,7 @@ export const ThinningMap: React.FC<ThinningMapProps> = ({ geoJsonData }) => {
         '#f44336' // Red for end
       ] as any,
       'circle-stroke-color': '#ffffff',
-      'circle-stroke-width': 2
+      'circle-stroke-width': 2,
     }
   };
 
@@ -111,11 +111,11 @@ export const ThinningMap: React.FC<ThinningMapProps> = ({ geoJsonData }) => {
     type: 'circle' as const,
     filter: ['==', ['get', 'type'], 'intermediate'] as any,
     paint: {
-      'circle-radius': 4,
+      'circle-radius': 3,
       'circle-color': '#2196f3',
       'circle-stroke-color': '#ffffff',
-      'circle-stroke-width': 2,
-      'circle-opacity': 0.8,
+      'circle-stroke-width': .5,
+      'circle-opacity': 0.6,
     }
   };
 

@@ -246,6 +246,9 @@ export const ThinningControls: React.FC<ThinningControlsProps> = ({
             <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
               順番間引き
             </Typography>
+            <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+              指定した間隔でポイントを選択します。1/4なら4つに1つのポイントを残します。
+            </Typography>
             <FormControl component="fieldset" fullWidth>
               <RadioGroup
                 value={getCurrentValue()}
@@ -284,6 +287,9 @@ export const ThinningControls: React.FC<ThinningControlsProps> = ({
             <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
               時間的間引き
             </Typography>
+            <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+              指定した時間間隔でポイントを選択します。GPXファイルに時間情報が必要です。
+            </Typography>
             <FormControl component="fieldset" fullWidth>
               <RadioGroup
                 value={getCurrentValue()}
@@ -321,6 +327,9 @@ export const ThinningControls: React.FC<ThinningControlsProps> = ({
           <Box sx={{ flex: '1 1 300px', minWidth: '250px', border: '1px solid #e0e0e0', borderRadius: 1, p: 2 }}>
             <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
               空間的間引き
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+              指定した距離間隔でポイントを選択します。直線距離で計算されます。
             </Typography>
             <FormControl component="fieldset" fullWidth>
               <RadioGroup
