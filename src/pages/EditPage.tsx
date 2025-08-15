@@ -14,8 +14,9 @@ import {
   DialogActions,
   Link,
 } from '@mui/material';
-import { ArrowBack, Download, Lightbulb } from '@mui/icons-material';
+import { Download, Lightbulb } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { Breadcrumb } from '../components/Breadcrumb';
 import type { ErrorEvent as MaplibreErrorEvent } from 'react-map-gl/maplibre';
 import { loadGeoJSONData } from '../utils/gpxStorage';
 import { convertGeoJSONToGPX } from '../utils/geoJsonConverter';
@@ -127,15 +128,19 @@ export const EditPage: React.FC = () => {
     latitude: 35.6812,
     zoom: 10
   });
-  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [tipsModalOpen, setTipsModalOpen] = useState(false);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
   const handleBackToHome = () => {
     navigate('/');
   };
 
-  const handleBackToThinning = () => {
-    setConfirmDialogOpen(true);
+  const handleBreadcrumbNavigate = (path: string) => {
+    if (path === '/thinning') {
+      setConfirmDialogOpen(true);
+      return false; // Prevent navigation
+    }
+    return true; // Allow navigation
   };
 
   const handleConfirmBackToThinning = () => {
@@ -344,15 +349,7 @@ export const EditPage: React.FC = () => {
   if (error) {
     return (
       <Container maxWidth="md" sx={{ py: 4 }}>
-        <Box sx={{ mb: 4 }}>
-          <Button
-            startIcon={<ArrowBack />}
-            onClick={handleBackToHome}
-            sx={{ mb: 2 }}
-          >
-            ホームに戻る
-          </Button>
-        </Box>
+        <Breadcrumb />
 
         <Alert severity="error" sx={{ mb: 4 }}>
           <Typography variant="body1">{error}</Typography>
@@ -391,14 +388,7 @@ export const EditPage: React.FC = () => {
     >
       {/* ヘッダーセクション - 固定サイズ */}
       <Box sx={{ flexShrink: 0, mb: 2 }}>
-        <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-          <Button
-            startIcon={<ArrowBack />}
-            onClick={handleBackToThinning}
-          >
-            間引き設定に戻る（リセット）
-          </Button>
-        </Box>
+        <Breadcrumb onNavigate={handleBreadcrumbNavigate} />
 
         <Typography variant="h4" component="h1" gutterBottom>
           GPX編集
@@ -468,6 +458,7 @@ export const EditPage: React.FC = () => {
           </Button>
         </Box>
       )}
+
 
 
       {/* 確認ダイアログ */}

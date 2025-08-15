@@ -9,8 +9,9 @@ import {
   Alert,
   Link,
 } from '@mui/material';
-import { ArrowBack, Edit, Lightbulb } from '@mui/icons-material';
+import { Edit, Lightbulb } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { Breadcrumb } from '../components/Breadcrumb';
 import { loadOriginalGeoJSONData, saveGeoJSONData, loadThinningOptions, saveThinningOptions, type ThinningOptions, type CustomInputs } from '../utils/gpxStorage';
 import type { FeatureCollection, LineString } from 'geojson';
 import { ThinningControls } from '../components/ThinningControls';
@@ -134,15 +135,7 @@ export const ThinningPage: React.FC = () => {
   if (error) {
     return (
       <Container maxWidth="md" sx={{ py: 4 }}>
-        <Box sx={{ mb: 4 }}>
-          <Button
-            startIcon={<ArrowBack />}
-            onClick={handleBackToHome}
-            sx={{ mb: 2 }}
-          >
-            ホームに戻る
-          </Button>
-        </Box>
+        <Breadcrumb />
 
         <Alert severity="error" sx={{ mb: 4 }}>
           <Typography variant="body1">{error}</Typography>
@@ -171,15 +164,9 @@ export const ThinningPage: React.FC = () => {
 
   return (
     <Container maxWidth="xl" sx={{ py: 2 }}>
-      <Box sx={{ mb: 2 }}>
-        <Button
-          startIcon={<ArrowBack />}
-          onClick={handleBackToHome}
-          sx={{ mb: 1 }}
-        >
-          ホームに戻る
-        </Button>
+      <Breadcrumb />
 
+      <Box sx={{ mb: 2 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           GPX間引き設定
         </Typography>
