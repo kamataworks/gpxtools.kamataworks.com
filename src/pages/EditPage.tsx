@@ -205,7 +205,7 @@ export const EditPage: React.FC = () => {
         }
 
         const drawInstance = draw.getTerraDrawInstance()
-        const result = drawInstance.addFeatures(geoJson.features as unknown[])
+        const result = drawInstance.addFeatures(geoJson.features as any)
         console.log(result) // エラーが戻り値から確認できる
 
         } else {
